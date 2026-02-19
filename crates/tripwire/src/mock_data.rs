@@ -218,6 +218,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:00 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "m2".to_string(),
@@ -226,6 +227,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:02 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "m3".to_string(),
@@ -234,6 +236,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:05 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "m4".to_string(),
@@ -242,6 +245,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:07 AM".to_string(),
                 edited: true,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "m5".to_string(),
@@ -250,6 +254,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:10 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "m6".to_string(),
@@ -258,6 +263,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:12 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "m7".to_string(),
@@ -266,6 +272,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 9:15 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
         ],
         "101" => vec![
@@ -276,6 +283,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Yesterday at 8:00 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "a2".to_string(),
@@ -284,6 +292,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Yesterday at 8:01 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
         ],
         "201" => vec![
@@ -294,6 +303,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 10:30 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             Message {
                 id: "d2".to_string(),
@@ -302,6 +312,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today at 10:35 AM".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
         ],
         _ => vec![
@@ -312,6 +323,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 timestamp: "Today".to_string(),
                 edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
         ],
     }
@@ -364,6 +376,7 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                     timestamp: "Today at 12:30 PM".to_string(),
                     edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
                 Message {
                     id: "dm2".to_string(),
@@ -372,6 +385,7 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                     timestamp: "Today at 12:45 PM".to_string(),
                     edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             ]
         }
@@ -385,6 +399,7 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                     timestamp: "Today at 10:20 AM".to_string(),
                     edited: false,
                 attachment: None,
+                reactions: std::collections::HashMap::new(),
             },
             ]
         }

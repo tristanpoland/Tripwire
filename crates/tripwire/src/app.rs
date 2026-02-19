@@ -240,6 +240,7 @@ impl TripwireApp {
                 timestamp: "Just now".to_string(),
                 edited: false,
                 attachment: self.pending_attachment.take(),
+                reactions: std::collections::HashMap::new(),
             };
             
             match self.current_view {
@@ -338,6 +339,40 @@ impl TripwireApp {
     pub(crate) fn clear_attachment(&mut self, cx: &mut Context<Self>) {
         self.pending_attachment = None;
         cx.notify();
+    }
+
+    pub(crate) fn toggle_reaction(
+        &mut self,
+        message_id: String,
+        emoji: String,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(user_id) = self.auth.current_user.as_ref().map(|u| u.id.clone()) {
+            let messages = match self.current_view {
+                AppView::Servers => {
+                    if let Some(channel_id) = &self.active_channel_id {
+                        self.messages.get_mut(channel_id)
+                    } else {
+                        None
+                    }
+                }
+                AppView::DirectMessages => {
+                    if let Some(dm_id) = &self.active_dm_id {
+                        self.dm_messages.get_mut(dm_id)
+                    } else {
+                        None
+                    }
+                }
+            };
+
+            if let Some(messages) = messages {
+                if let Some(msg) = messages.iter_mut().find(|m| m.id == message_id) {
+                    msg.toggle_reaction(emoji, user_id);
+                }
+            }
+
+            cx.notify();
+        }
     }
 
     pub(crate) fn logout(&mut self, _window: &mut Window, cx: &mut Context<Self>) {

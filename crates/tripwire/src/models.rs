@@ -173,6 +173,47 @@ pub struct Message {
     pub timestamp: String,
     pub edited: bool,
     pub attachment: Option<Attachment>,
+    pub reactions: std::collections::HashMap<String, Vec<String>>,
+}
+
+impl Message {
+    pub fn add_reaction(&mut self, emoji: String, user_id: String) {
+        self.reactions.entry(emoji).or_default().push(user_id);
+    }
+
+    pub fn remove_reaction(&mut self, emoji: &str, user_id: &str) {
+        if let Some(users) = self.reactions.get_mut(emoji) {
+            users.retain(|id| id != user_id);
+            if users.is_empty() {
+                self.reactions.remove(emoji);
+            }
+        }
+    }
+
+    pub fn toggle_reaction(&mut self, emoji: String, user_id: String) {
+        let has_reacted = self
+            .reactions
+            .get(&emoji)
+            .map(|users| users.contains(&user_id))
+            .unwrap_or(false);
+
+        if has_reacted {
+            self.remove_reaction(&emoji, &user_id);
+        } else {
+            self.add_reaction(emoji, user_id);
+        }
+    }
+
+    pub fn reaction_count(&self, emoji: &str) -> usize {
+        self.reactions.get(emoji).map(|users| users.len()).unwrap_or(0)
+    }
+
+    pub fn user_reacted(&self, emoji: &str, user_id: &str) -> bool {
+        self.reactions
+            .get(emoji)
+            .map(|users| users.contains(&user_id.to_string()))
+            .unwrap_or(false)
+    }
 }
 
 #[derive(Debug, Clone)]
