@@ -6,6 +6,7 @@ use gpui::AppContext;
 use crate::auth_state::AuthState;
 use crate::mock_data;
 use crate::models::{Channel, ChannelKind, DirectMessageChannel, Message, Server};
+use crate::titlebar::TripwireTitleBar;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppView {
@@ -22,6 +23,7 @@ pub mod auth_view;
 /// Render is delegated to `auth_view` or `app_view` modules.
 pub struct TripwireApp {
     pub(crate) focus_handle: FocusHandle,
+    pub(crate) titlebar: Entity<TripwireTitleBar>,
 
     // ── Auth state ──────────────────────────────────────────────────────────
     pub(crate) auth: AuthState,
@@ -48,6 +50,7 @@ pub struct TripwireApp {
 impl TripwireApp {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let auth = AuthState::new();
+        let titlebar = cx.new(|cx| TripwireTitleBar::new(window, cx));
 
         // Auth inputs
         let email_input =
@@ -87,6 +90,7 @@ impl TripwireApp {
 
         Self {
             focus_handle: cx.focus_handle(),
+            titlebar,
             auth,
             email_input,
             password_input,
@@ -271,14 +275,20 @@ impl Focusable for TripwireApp {
 // ── Render ────────────────────────────────────────────────────────────────────
 
 use gpui::{IntoElement, Render};
+use gpui::Styled;
+use gpui::ParentElement;
+use gpui_component::v_flex;
 
 impl Render for TripwireApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.auth.is_authenticated() {
-            self.render_app(window, cx).into_any_element()
-        } else {
-            self.render_auth(window, cx).into_any_element()
-        }
+        v_flex()
+            .size_full()
+            .child(self.titlebar.clone())
+            .child(if self.auth.is_authenticated() {
+                self.render_app(window, cx).into_any_element()
+            } else {
+                self.render_auth(window, cx).into_any_element()
+            })
     }
 }
 

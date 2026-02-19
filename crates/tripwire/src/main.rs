@@ -21,6 +21,7 @@ mod app;
 mod auth_state;
 mod mock_data;
 mod models;
+mod titlebar;
 
 use gpui::{
     App, Application, Bounds, WindowBounds, WindowKind,
@@ -28,10 +29,11 @@ use gpui::{
 };
 use gpui::Focusable;
 use gpui::AppContext;
-use gpui_component::{Root, TitleBar};
+use gpui_component::Root;
 use gpui_component_assets::Assets;
 
 use app::TripwireApp;
+use titlebar::TripwireTitleBar;
 
 actions!(tripwire, [Quit]);
 
@@ -66,7 +68,7 @@ fn open_window(cx: &mut App) {
     cx.spawn(async move |cx| {
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
-            titlebar: Some(TitleBar::title_bar_options()),
+            titlebar: Some(gpui_component::TitleBar::title_bar_options()),
             window_min_size: Some(gpui::Size {
                 width: px(800.),
                 height: px(500.),
