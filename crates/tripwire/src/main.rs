@@ -26,6 +26,8 @@ use gpui::{
     App, Application, Bounds, Context, IntoElement, Render, Window, WindowBounds, WindowKind,
     WindowOptions, actions, div, prelude::*, px, size,
 };
+use gpui::Focusable;
+use gpui::AppContext;
 use gpui_component::{Root, TitleBar};
 use gpui_component_assets::Assets;
 

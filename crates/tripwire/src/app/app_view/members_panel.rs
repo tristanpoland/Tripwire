@@ -1,6 +1,11 @@
 //! Right-side member list panel — 240 px wide, showing online / offline users.
 
 use gpui::{AnyElement, Context, ElementId, IntoElement as _, SharedString, div, px};
+use gpui::InteractiveElement;
+use gpui::StatefulInteractiveElement;
+use gpui::ParentElement;
+use gpui_component::StyledExt;
+use gpui::Styled;
 use gpui_component::{
     ActiveTheme as _, Sizable as _,
     avatar::Avatar,

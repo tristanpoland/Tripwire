@@ -9,22 +9,24 @@ pub mod members_panel;
 pub mod server_list;
 
 use gpui::{AnyElement, Context, IntoElement as _, Window};
+use gpui::prelude::FluentBuilder;
+use gpui::ParentElement;
+use gpui::Styled;
 use gpui_component::{ActiveTheme as _, h_flex};
-
 use crate::app::TripwireApp;
 
 impl TripwireApp {
     /// Top-level Discord-style layout:
     ///
     /// ```
-    /// ┌──────┬────────────┬──────────────────────────┬────────────────┐
+    /// ┌──────┬────────────┬───────────────────────────┬────────────────┐
     /// │      │            │  Channel Header           │                │
     /// │  S   │  Channel   │───────────────────────────│  Members List  │
     /// │  e   │  List      │  Messages (scrollable)    │                │
     /// │  r   │            │                           │                │
     /// │  v   │            │───────────────────────────│                │
     /// │  e   │            │  Message Input            │                │
-    /// │  r   ├────────────┴──────────────────────────┴────────────────┤
+    /// │  r   ├────────────┴───────────────────────────┴────────────────┤
     /// │  s   │                 User Bar                                │
     /// └──────┴─────────────────────────────────────────────────────────┘
     /// ```

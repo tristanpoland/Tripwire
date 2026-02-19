@@ -9,7 +9,11 @@ use gpui_component::{
     h_flex, v_flex,
     input::{Input, InputEvent, InputState},
 };
-
+use gpui::InteractiveElement;
+use gpui::StatefulInteractiveElement;
+use gpui::ParentElement;
+use gpui::Styled;
+use gpui_component::StyledExt;
 use crate::app::TripwireApp;
 
 impl TripwireApp {

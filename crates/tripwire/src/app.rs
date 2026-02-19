@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use gpui::{App, Context, Entity, FocusHandle, Focusable, Subscription, Window};
 use gpui_component::input::{InputEvent, InputState};
-
+use gpui::AppContext;
 use crate::auth_state::AuthState;
 use crate::mock_data;
 use crate::models::{Message, Server};

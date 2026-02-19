@@ -5,6 +5,12 @@ use gpui::{
     AnyElement, Context, ElementId, IntoElement as _, SharedString, Window, div,
     prelude::FluentBuilder as _, px,
 };
+use gpui_component::StyledExt;
+use gpui::InteractiveElement;
+use gpui::StatefulInteractiveElement;
+use gpui::ParentElement;
+use gpui_component::button::ButtonVariants;
+use gpui::Styled;
 use gpui_component::{
     ActiveTheme as _, Icon, IconName, Sizable as _,
     avatar::Avatar,
