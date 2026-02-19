@@ -151,7 +151,9 @@ impl TripwireApp {
                     .ghost()
                     .xsmall()
                     .tooltip("User Settings")
-                    .on_click(|_, _, _| {}),
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.open_settings(cx);
+                    })),
             )
             .into_any_element()
     }

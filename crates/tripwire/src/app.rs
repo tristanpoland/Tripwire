@@ -7,6 +7,7 @@ use crate::auth_state::AuthState;
 use crate::mock_data;
 use crate::models::{Attachment, Channel, ChannelKind, DirectMessageChannel, Message, MessageReply, Server, User, UserProfile};
 use crate::titlebar::TripwireTitleBar;
+use crate::app::app_view::settings::SettingsScreen;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppView {
@@ -53,6 +54,10 @@ pub struct TripwireApp {
     // ── Profile state ───────────────────────────────────────────────────────
     pub(crate) show_profile: Option<UserProfile>,
     pub(crate) user_profiles: HashMap<String, UserProfile>,
+    
+    // ── Settings state ──────────────────────────────────────────────────────
+    pub(crate) show_settings: bool,
+    pub(crate) settings_screen: SettingsScreen,
 
     pub(crate) _subscriptions: Vec<Subscription>,
 }
@@ -120,6 +125,8 @@ impl TripwireApp {
             replying_to: None,
             show_profile: None,
             user_profiles: HashMap::new(),
+            show_settings: false,
+            settings_screen: SettingsScreen::Account,
             _subscriptions: vec![msg_sub],
         }
     }
@@ -423,6 +430,21 @@ impl TripwireApp {
 
     pub(crate) fn close_profile(&mut self, cx: &mut Context<Self>) {
         self.show_profile = None;
+        cx.notify();
+    }
+
+    pub(crate) fn open_settings(&mut self, cx: &mut Context<Self>) {
+        self.show_settings = true;
+        cx.notify();
+    }
+
+    pub(crate) fn close_settings(&mut self, cx: &mut Context<Self>) {
+        self.show_settings = false;
+        cx.notify();
+    }
+
+    pub(crate) fn switch_settings_screen(&mut self, screen: SettingsScreen, cx: &mut Context<Self>) {
+        self.settings_screen = screen;
         cx.notify();
     }
 

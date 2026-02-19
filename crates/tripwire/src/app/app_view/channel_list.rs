@@ -316,9 +316,9 @@ impl TripwireApp {
                     .ghost()
                     .xsmall()
                     .tooltip("User Settings")
-                    .on_click(|_, _, _| {
-                        // TODO: open user settings
-                    }),
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.open_settings(cx);
+                    })),
             )
     }
 }

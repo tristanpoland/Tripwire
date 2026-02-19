@@ -9,6 +9,7 @@ pub mod dm_list;
 pub mod members_panel;
 pub mod profile_card;
 pub mod server_list;
+pub mod settings;
 
 use gpui::{AnyElement, Context, IntoElement as _, Window, div, InteractiveElement};
 use gpui::prelude::FluentBuilder;
@@ -66,14 +67,17 @@ impl TripwireApp {
                         }))
                         .child(
                             div()
-                                .on_mouse_down(gpui::MouseButton::Left, |_, _, _| {
-                                    // Stop propagation to prevent closing when clicking inside
-                                })
+                                .occlude()
+                                .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| cx.stop_propagation())
                                 .when_some(self.show_profile.clone(), |this: gpui::Div, profile| {
                                     this.child(Self::render_profile_card(&profile, &current_user_id, window, cx))
                                 })
                         )
                 )
+            })
+            // Settings modal overlay (if open)
+            .when(self.show_settings, |this| {
+                this.child(self.render_settings_modal(window, cx))
             })
             .into_any_element()
     }
