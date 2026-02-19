@@ -7,9 +7,10 @@ pub mod channel_list;
 pub mod chat_area;
 pub mod dm_list;
 pub mod members_panel;
+pub mod profile_card;
 pub mod server_list;
 
-use gpui::{AnyElement, Context, IntoElement as _, Window};
+use gpui::{AnyElement, Context, IntoElement as _, Window, div, InteractiveElement};
 use gpui::prelude::FluentBuilder;
 use gpui::ParentElement;
 use gpui::Styled;
@@ -48,6 +49,31 @@ impl TripwireApp {
             // Right panel: members list (only show for servers, not DMs)
             .when(self.show_members && self.current_view == AppView::Servers, |this| {
                 this.child(self.render_members_panel(cx))
+            })
+            // Profile modal overlay (if open)
+            .when(self.show_profile.is_some(), |this| {
+                let current_user_id = self.auth.current_user.as_ref().map(|u| u.id.clone()).unwrap_or_default();
+                this.child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .bg(gpui::rgba(0x00000099))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                            this.close_profile(cx);
+                        }))
+                        .child(
+                            div()
+                                .on_mouse_down(gpui::MouseButton::Left, |_, _, _| {
+                                    // Stop propagation to prevent closing when clicking inside
+                                })
+                                .when_some(self.show_profile.clone(), |this: gpui::Div, profile| {
+                                    this.child(Self::render_profile_card(&profile, &current_user_id, window, cx))
+                                })
+                        )
+                )
             })
             .into_any_element()
     }

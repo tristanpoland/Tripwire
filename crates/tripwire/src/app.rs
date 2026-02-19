@@ -5,7 +5,7 @@ use gpui_component::input::{InputEvent, InputState};
 use gpui::AppContext;
 use crate::auth_state::AuthState;
 use crate::mock_data;
-use crate::models::{Attachment, Channel, ChannelKind, DirectMessageChannel, Message, Server};
+use crate::models::{Attachment, Channel, ChannelKind, DirectMessageChannel, Message, MessageReply, Server, User, UserProfile};
 use crate::titlebar::TripwireTitleBar;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,6 +46,13 @@ pub struct TripwireApp {
     pub(crate) pending_attachment: Option<Attachment>,
     pub(crate) emoji_search: String,
     pub(crate) active_emoji_picker_message: Option<String>,
+    
+    // ── Reply state ─────────────────────────────────────────────────────────
+    pub(crate) replying_to: Option<MessageReply>,
+    
+    // ── Profile state ───────────────────────────────────────────────────────
+    pub(crate) show_profile: Option<UserProfile>,
+    pub(crate) user_profiles: HashMap<String, UserProfile>,
 
     pub(crate) _subscriptions: Vec<Subscription>,
 }
@@ -110,6 +117,9 @@ impl TripwireApp {
             pending_attachment: None,
             emoji_search: String::new(),
             active_emoji_picker_message: None,
+            replying_to: None,
+            show_profile: None,
+            user_profiles: HashMap::new(),
             _subscriptions: vec![msg_sub],
         }
     }
@@ -243,8 +253,14 @@ impl TripwireApp {
                 content,
                 timestamp: "Just now".to_string(),
                 edited: false,
+                edited_timestamp: None,
                 attachment: self.pending_attachment.take(),
                 reactions: std::collections::HashMap::new(),
+                reply_to: self.replying_to.take().map(Box::new),
+                mentioned_users: vec![],
+                pinned: false,
+                thread_id: None,
+                thread_count: 0,
             };
             
             match self.current_view {
@@ -377,6 +393,37 @@ impl TripwireApp {
 
             cx.notify();
         }
+    }
+
+    pub(crate) fn start_reply(&mut self, message: &Message, cx: &mut Context<Self>) {
+        self.replying_to = Some(MessageReply {
+            message_id: message.id.clone(),
+            author: message.author.clone(),
+            content_preview: message.content_preview(50),
+        });
+        cx.notify();
+    }
+
+    pub(crate) fn cancel_reply(&mut self, cx: &mut Context<Self>) {
+        self.replying_to = None;
+        cx.notify();
+    }
+
+    pub(crate) fn show_user_profile(&mut self, user: User, cx: &mut Context<Self>) {
+        // Get or create profile
+        let profile = self
+            .user_profiles
+            .entry(user.id.clone())
+            .or_insert_with(|| mock_data::make_user_profile(user.clone()))
+            .clone();
+        
+        self.show_profile = Some(profile);
+        cx.notify();
+    }
+
+    pub(crate) fn close_profile(&mut self, cx: &mut Context<Self>) {
+        self.show_profile = None;
+        cx.notify();
     }
 
     pub(crate) fn logout(&mut self, _window: &mut Window, cx: &mut Context<Self>) {

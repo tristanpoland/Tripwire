@@ -87,6 +87,7 @@ impl TripwireApp {
         let avatar_name = username.clone();
         let status = user.status.clone();
         let user_id = user.id.clone();
+        let user_clone = user.clone();
 
         let status_color = match status {
             UserStatus::Online => gpui::hsla(142. / 360., 0.71, 0.45, 1.),
@@ -113,6 +114,9 @@ impl TripwireApp {
             .rounded(cx.theme().radius)
             .cursor_pointer()
             .hover(|s| s.bg(cx.theme().sidebar_accent))
+            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                this.show_user_profile(user_clone.clone(), cx);
+            }))
             // Avatar with status dot
             .child(
                 div()

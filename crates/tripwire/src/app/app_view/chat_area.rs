@@ -253,7 +253,9 @@ impl TripwireApp {
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
         let author_name = msg.author.username.clone();
+        let author_user = msg.author.clone();
         let avatar_name = author_name.clone();
+        let avatar_user = author_user.clone();
         let content = msg.content.clone();
         let timestamp = msg.timestamp.clone();
         let is_edited = msg.edited;
@@ -261,29 +263,84 @@ impl TripwireApp {
         let message_id = msg.id.clone();
         let reactions = msg.reactions.clone();
         let user_id = self.auth.current_user.as_ref().map(|u| u.id.clone()).unwrap_or_default();
+        let reply_to = msg.reply_to.clone();
+        let is_reply = msg.is_reply();
 
         div()
             .relative()
             .group("message-hover")
             .child(
-                h_flex()
-                    .id(ElementId::Name(SharedString::from(format!("msg-{index}"))))
-                    .gap_3()
-                    .py_2()
-                    .px_3()
-                    .items_start()
-                    .rounded(cx.theme().radius)
-                    .hover(|s| s.bg(cx.theme().accent))
-                    // Avatar
+                v_flex()
+                    .gap_1()
+                    // Reply preview (if this is a reply)
+                    .when(is_reply, |this| {
+                        if let Some(reply) = reply_to.as_ref() {
+                            let reply_author = reply.author.username.clone();
+                            let reply_content = reply.content_preview.clone();
+                            this.child(
+                                h_flex()
+                                    .ml(px(56.0))
+                                    .gap_2()
+                                    .items_center()
+                                    .child(
+                                        div()
+                                            .w(px(2.0))
+                                            .h(px(12.0))
+                                            .rounded(px(1.0))
+                                            .bg(cx.theme().muted_foreground)
+                                    )
+                                    .child(
+                                        gpui_component::Icon::new(IconName::ArrowRight)
+                                            .xsmall()
+                                            .text_color(cx.theme().muted_foreground)
+                                    )
+                                    .child(
+                                        h_flex()
+                                            .gap_1()
+                                            .items_baseline()
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                    .text_color(cx.theme().muted_foreground)
+                                                    .child(reply_author)
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(cx.theme().muted_foreground)
+                                                    .child(reply_content)
+                                            )
+                                    )
+                            )
+                        } else {
+                            this
+                        }
+                    })
+                    // Main message
                     .child(
-                        div()
-                            .flex_shrink_0()
+                        h_flex()
+                            .id(ElementId::Name(SharedString::from(format!("msg-{index}"))))
+                            .gap_3()
+                            .py_2()
+                            .px_3()
+                            .items_start()
+                            .rounded(cx.theme().radius)
+                            .hover(|s| s.bg(cx.theme().accent))
+                            // Avatar
                             .child(
-                                Avatar::new()
-                                    .name(avatar_name)
-                                    .with_size(gpui_component::Size::Medium),
-                            ),
-                    )
+                                div()
+                                    .flex_shrink_0()
+                                    .cursor_pointer()
+                                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                        this.show_user_profile(avatar_user.clone(), cx);
+                                    }))
+                                    .child(
+                                        Avatar::new()
+                                            .name(avatar_name)
+                                            .with_size(gpui_component::Size::Medium),
+                                    ),
+                            )
                     // Content block
                     .child(
                         v_flex()
@@ -300,6 +357,11 @@ impl TripwireApp {
                                             .text_sm()
                                             .font_weight(gpui::FontWeight::SEMIBOLD)
                                             .text_color(cx.theme().foreground)
+                                            .cursor_pointer()
+                                            .hover(|s| s.underline())
+                                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                this.show_user_profile(author_user.clone(), cx);
+                                            }))
                                             .child(author_name),
                                     )
                                     .child(
@@ -390,8 +452,9 @@ impl TripwireApp {
                                             })
                                         )
                                 )
-                            }),
-                    ),
+                            })
+                    )
+                    )
             )
             // Hover toolbar (Discord-style) - positioned at top-right of message
             .child(
@@ -411,6 +474,19 @@ impl TripwireApp {
                             .border_1()
                             .border_color(cx.theme().border)
                             .shadow_md()
+                            // Reply button
+                            .child({
+                                let message_clone = msg.clone();
+                                Button::new(format!("reply-{}", message_id))
+                                    .icon(IconName::ArrowLeft)
+                                    .ghost()
+                                    .xsmall()
+                                    .tooltip("Reply")
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.start_reply(&message_clone, cx);
+                                    }))
+                            })
+                            // Emoji picker
                             .child(
                                 gpui_component::popover::Popover::new(format!("emoji-picker-{}", message_id))
                                     .trigger(
@@ -462,10 +538,66 @@ impl TripwireApp {
     ) -> impl gpui::IntoElement {
         let _ = channel_name;
         let has_attachment = self.pending_attachment.is_some();
+        let has_reply = self.replying_to.is_some();
         
         v_flex()
             .flex_shrink_0()
             .gap_2()
+            // Reply preview (if replying)
+            .when(has_reply, |this| {
+                if let Some(reply) = self.replying_to.as_ref() {
+                    let reply_author = reply.author.username.clone();
+                    let reply_content = reply.content_preview.clone();
+                    this.child(
+                        div()
+                            .px_4()
+                            .child(
+                                h_flex()
+                                    .gap_2()
+                                    .items_center()
+                                    .px_3()
+                                    .py_2()
+                                    .rounded(cx.theme().radius)
+                                    .bg(cx.theme().muted)
+                                    .border_1()
+                                    .border_color(cx.theme().border)
+                                    .child(
+                                        gpui_component::Icon::new(IconName::ArrowLeft)
+                                            .small()
+                                            .text_color(cx.theme().muted_foreground)
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(cx.theme().muted_foreground)
+                                                    .child(format!("Replying to {}", reply_author))
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .text_color(cx.theme().foreground)
+                                                    .child(reply_content)
+                                            )
+                                    )
+                                    .child(
+                                        Button::new("btn-cancel-reply")
+                                            .icon(IconName::Close)
+                                            .ghost()
+                                            .xsmall()
+                                            .tooltip("Cancel reply")
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.cancel_reply(cx);
+                                            })),
+                                    )
+                            )
+                    )
+                } else {
+                    this
+                }
+            })
             .child(
                 // Attachment preview
                 if let Some(ref attachment) = self.pending_attachment {
