@@ -10,6 +10,8 @@ pub mod members_panel;
 pub mod profile_card;
 pub mod server_list;
 pub mod settings;
+pub mod voice_channel;
+pub mod stage_channel;
 
 use gpui::{AnyElement, Context, IntoElement as _, Window, div, InteractiveElement};
 use gpui::prelude::FluentBuilder;

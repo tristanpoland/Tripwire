@@ -36,22 +36,62 @@ impl TripwireApp {
                 let channel_kind = self.active_channel_kind();
                 let members_connected = self.active_channel().map(|c| c.members_connected).unwrap_or(0);
 
-                v_flex()
-                    .flex_1()
-                    .h_full()
-                    .min_w_0()
-                    .overflow_hidden()
-                    .bg(cx.theme().background)
-                    .child(self.render_channel_header(
-                        &channel_name,
-                        channel_topic.as_deref(),
-                        channel_kind,
-                        members_connected,
-                        cx,
-                    ))
-                    .child(self.render_message_list(&messages, cx))
-                    .child(self.render_message_composer(&channel_name, window, cx))
-                    .into_any_element()
+                // Render different UI based on channel type
+                match channel_kind {
+                    Some(crate::models::ChannelKind::Voice) => {
+                        v_flex()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().background)
+                            .child(self.render_channel_header(
+                                &channel_name,
+                                channel_topic.as_deref(),
+                                channel_kind,
+                                members_connected,
+                                cx,
+                            ))
+                            .child(self.render_voice_channel_ui(&channel_name, members_connected, window, cx))
+                            .into_any_element()
+                    }
+                    Some(crate::models::ChannelKind::Stage) => {
+                        v_flex()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().background)
+                            .child(self.render_channel_header(
+                                &channel_name,
+                                channel_topic.as_deref(),
+                                channel_kind,
+                                members_connected,
+                                cx,
+                            ))
+                            .child(self.render_stage_channel_ui(&channel_name, members_connected, window, cx))
+                            .into_any_element()
+                    }
+                    _ => {
+                        // Regular text channel
+                        v_flex()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().background)
+                            .child(self.render_channel_header(
+                                &channel_name,
+                                channel_topic.as_deref(),
+                                channel_kind,
+                                members_connected,
+                                cx,
+                            ))
+                            .child(self.render_message_list(&messages, cx))
+                            .child(self.render_message_composer(&channel_name, window, cx))
+                            .into_any_element()
+                    }
+                }
             }
             AppView::DirectMessages => {
                 let dm_name = self
