@@ -124,7 +124,7 @@ impl TripwireApp {
                     .icon(IconName::Plus)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("Add a Server").build(window, cx))
+                    .tooltip("Add a Server")
                     .on_click(|_, _, _| {}),
             )
             .child(
@@ -132,7 +132,7 @@ impl TripwireApp {
                     .icon(IconName::Settings)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("User Settings").build(window, cx))
+                    .tooltip("User Settings")
                     .on_click(|_, _, _| {}),
             )
             .into_any_element()
@@ -143,7 +143,7 @@ impl TripwireApp {
             .icon(IconName::Inbox)
             .ghost()
             .small()
-            .tooltip(|window, cx| Tooltip::new("Direct Messages").build(window, cx))
+            .tooltip("Direct Messages")
             .on_click(|_, _, _| {})
     }
 }
