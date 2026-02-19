@@ -11,11 +11,12 @@ use gpui::ParentElement;
 use gpui_component::StyledExt;
 use gpui::Styled;
 use gpui_component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _,
+    ActiveTheme as _, IconName, Sizable as _,
     avatar::Avatar,
     button::Button,
     h_flex, v_flex,
     input::Input,
+    scroll::ScrollableElement as _,
     tooltip::Tooltip,
 };
 
@@ -106,7 +107,7 @@ impl TripwireApp {
                     .icon(IconName::Search)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::text("Search", window, cx))
+                    .tooltip(|window, cx| Tooltip::new("Search").build(window, cx))
                     .on_click(|_, _, _| {}),
             )
             .child(
@@ -114,7 +115,7 @@ impl TripwireApp {
                     .icon(IconName::PanelRight)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::text("Toggle Member List", window, cx))
+                    .tooltip(|window, cx| Tooltip::new("Toggle Member List").build(window, cx))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.show_members = !this.show_members;
                         cx.notify();
@@ -129,7 +130,7 @@ impl TripwireApp {
     ) -> impl gpui::IntoElement {
         div()
             .flex_1()
-            .overflow_y_scroll()
+            .overflow_y_scrollbar()
             .px_4()
             .py_4()
             .children(
@@ -147,6 +148,7 @@ impl TripwireApp {
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
         let author_name = msg.author.username.clone();
+        let avatar_name = author_name.clone();
         let content = msg.content.clone();
         let timestamp = msg.timestamp.clone();
         let is_edited = msg.edited;
@@ -162,7 +164,7 @@ impl TripwireApp {
             // Avatar
             .child(
                 Avatar::new()
-                    .name(author_name.as_str())
+                    .name(avatar_name)
                     .with_size(gpui_component::Size::Medium),
             )
             // Content block
@@ -214,6 +216,7 @@ impl TripwireApp {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
+        let _ = channel_name;
         h_flex()
             .flex_shrink_0()
             .mx_4()
@@ -223,7 +226,7 @@ impl TripwireApp {
             .gap_2()
             .items_center()
             .rounded(cx.theme().radius_lg)
-            .bg(cx.theme().card)
+            .bg(cx.theme().popover)
             .border_1()
             .border_color(cx.theme().border)
             // Attachment button (placeholder)
@@ -232,14 +235,14 @@ impl TripwireApp {
                     .icon(IconName::Plus)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::text("Attach File", window, cx))
+                    .tooltip(|window, cx| Tooltip::new("Attach File").build(window, cx))
                     .on_click(|_, _, _| {}),
             )
             // Text input — fills remaining space
             .child(
-                Input::new(&self.message_input)
-                    .appearance(false)
-                    .flex_1(),
+                div()
+                    .flex_1()
+                    .child(Input::new(&self.message_input).appearance(false)),
             )
             // Emoji placeholder
             .child(
@@ -247,7 +250,7 @@ impl TripwireApp {
                     .icon(IconName::Star)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::text("Emoji", window, cx))
+                    .tooltip(|window, cx| Tooltip::new("Emoji").build(window, cx))
                     .on_click(|_, _, _| {}),
             )
             // Send button
@@ -256,7 +259,7 @@ impl TripwireApp {
                     .icon(IconName::ArrowRight)
                     .primary()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::text("Send Message", window, cx))
+                    .tooltip(|window, cx| Tooltip::new("Send Message").build(window, cx))
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.send_message(window, cx);
                     })),
