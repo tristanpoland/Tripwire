@@ -10,6 +10,7 @@ use gpui_component::{
     ActiveTheme as _, Sizable as _,
     avatar::Avatar,
     h_flex, v_flex,
+    scroll::ScrollableElement as _,
 };
 
 use crate::app::TripwireApp;
@@ -27,6 +28,31 @@ impl TripwireApp {
         let (online, offline): (Vec<_>, Vec<_>) =
             members.iter().partition(|u| u.is_online());
 
+        // Pre-compute all children before building the element tree to avoid
+        // multiple mutable borrows of `cx` inside closures.
+        let mut items: Vec<AnyElement> = Vec::new();
+
+        if !online.is_empty() {
+            items.push(
+                self.render_section_header(&format!("ONLINE — {}", online.len()), cx)
+                    .into_any_element(),
+            );
+            for u in &online {
+                items.push(self.render_member_row(u, cx).into_any_element());
+            }
+        }
+
+        if !offline.is_empty() {
+            items.push(div().mt_4().into_any_element());
+            items.push(
+                self.render_section_header(&format!("OFFLINE — {}", offline.len()), cx)
+                    .into_any_element(),
+            );
+            for u in &offline {
+                items.push(self.render_member_row(u, cx).into_any_element());
+            }
+        }
+
         v_flex()
             .w(px(PANEL_WIDTH))
             .h_full()
@@ -38,26 +64,10 @@ impl TripwireApp {
             .child(
                 div()
                     .flex_1()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .px_2()
                     .py_4()
-                    // ── Online section ────────────────────────────────────────
-                    .when(!online.is_empty(), |this| {
-                        this.child(self.render_section_header(&format!("ONLINE — {}", online.len()), cx))
-                            .children(online.iter().map(|u| self.render_member_row(u, cx)))
-                    })
-                    // ── Offline section ───────────────────────────────────────
-                    .when(!offline.is_empty(), |this| {
-                        this.child(
-                            div().mt_4().child(
-                                self.render_section_header(
-                                    &format!("OFFLINE — {}", offline.len()),
-                                    cx,
-                                ),
-                            ),
-                        )
-                        .children(offline.iter().map(|u| self.render_member_row(u, cx)))
-                    }),
+                    .children(items),
             )
             .into_any_element()
     }
@@ -74,6 +84,7 @@ impl TripwireApp {
 
     fn render_member_row(&self, user: &User, cx: &mut Context<Self>) -> impl gpui::IntoElement {
         let username = user.username.clone();
+        let avatar_name = username.clone();
         let status = user.status.clone();
         let user_id = user.id.clone();
 
@@ -82,6 +93,13 @@ impl TripwireApp {
             UserStatus::Idle => gpui::hsla(43. / 360., 0.85, 0.56, 1.),
             UserStatus::DoNotDisturb => gpui::hsla(0. / 360., 0.85, 0.60, 1.),
             UserStatus::Offline => gpui::hsla(0., 0., 0.55, 1.),
+        };
+
+        let status_label = match &status {
+            UserStatus::Online => "Online",
+            UserStatus::Idle => "Idle",
+            UserStatus::DoNotDisturb => "Do Not Disturb",
+            UserStatus::Offline => "Offline",
         };
 
         h_flex()
@@ -100,7 +118,7 @@ impl TripwireApp {
                 div()
                     .relative()
                     .flex_shrink_0()
-                    .child(Avatar::new().name(username.as_str()).xsmall())
+                    .child(Avatar::new().name(avatar_name).xsmall())
                     // Status dot
                     .child(
                         div()
@@ -134,12 +152,7 @@ impl TripwireApp {
                         div()
                             .text_xs()
                             .text_color(cx.theme().muted_foreground)
-                            .child(match &status {
-                                UserStatus::Online => "Online".to_string(),
-                                UserStatus::Idle => "Idle".to_string(),
-                                UserStatus::DoNotDisturb => "Do Not Disturb".to_string(),
-                                UserStatus::Offline => "Offline".to_string(),
-                            }),
+                            .child(status_label),
                     ),
             )
     }
