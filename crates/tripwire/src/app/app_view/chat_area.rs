@@ -235,7 +235,7 @@ impl TripwireApp {
                     .icon(IconName::Plus)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("Attach File").build(window, cx))
+                    .tooltip("Attach File")
                     .on_click(|_, _, _| {}),
             )
             // Text input — fills remaining space
@@ -250,7 +250,7 @@ impl TripwireApp {
                     .icon(IconName::Star)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("Emoji").build(window, cx))
+                    .tooltip("Emoji")
                     .on_click(|_, _, _| {}),
             )
             // Send button
@@ -259,7 +259,7 @@ impl TripwireApp {
                     .icon(IconName::ArrowRight)
                     .primary()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("Send Message").build(window, cx))
+                    .tooltip("Send Message")
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.send_message(window, cx);
                     })),
