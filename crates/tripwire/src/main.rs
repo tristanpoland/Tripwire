@@ -23,8 +23,8 @@ mod mock_data;
 mod models;
 
 use gpui::{
-    App, Application, Bounds, Context, IntoElement, Render, Window, WindowBounds, WindowKind,
-    WindowOptions, actions, div, prelude::*, px, size,
+    App, Application, Bounds, WindowBounds, WindowKind,
+    WindowOptions, actions, px, size,
 };
 use gpui::Focusable;
 use gpui::AppContext;

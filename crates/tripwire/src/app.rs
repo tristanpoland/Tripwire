@@ -189,7 +189,7 @@ impl Focusable for TripwireApp {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
-use gpui::{IntoElement, Render, Window as GWindow};
+use gpui::{IntoElement, Render};
 
 impl Render for TripwireApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

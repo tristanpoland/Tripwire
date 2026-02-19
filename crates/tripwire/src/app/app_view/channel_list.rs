@@ -5,17 +5,17 @@ use gpui::{
     AnyElement, Context, ElementId, IntoElement as _, SharedString, Window, div,
     prelude::FluentBuilder as _, px,
 };
-use gpui_component::StyledExt;
 use gpui::InteractiveElement;
 use gpui::StatefulInteractiveElement;
 use gpui::ParentElement;
 use gpui_component::button::ButtonVariants;
 use gpui::Styled;
 use gpui_component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _,
+    ActiveTheme as _, Icon, IconName, Sizable as _, StyledExt as _,
     avatar::Avatar,
     button::Button,
     h_flex, v_flex,
+    scroll::ScrollableElement as _,
     tooltip::Tooltip,
 };
 
@@ -40,8 +40,6 @@ impl TripwireApp {
                     .into_any_element()
             }
         };
-
-        let current_user = self.auth.current_user.clone();
 
         v_flex()
             .w(px(PANEL_WIDTH))
@@ -84,7 +82,7 @@ impl TripwireApp {
             .child(
                 div()
                     .flex_1()
-                    .overflow_y_scroll()
+                    .overflow_y_scrollbar()
                     .py_2()
                     .children(server.categories.iter().map(|cat| {
                         self.render_category(cat, cx)
@@ -202,7 +200,7 @@ impl TripwireApp {
                                         .h(px(16.))
                                         .px(px(4.))
                                         .rounded_full()
-                                        .bg(cx.theme().destructive)
+                                        .bg(cx.theme().danger)
                                         .flex()
                                         .items_center()
                                         .justify_center()
@@ -286,7 +284,7 @@ impl TripwireApp {
                     .icon(IconName::Settings)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::text("User Settings", window, cx))
+                    .tooltip(|window, cx| Tooltip::new("User Settings").build(window, cx))
                     .on_click(|_, _, _| {
                         // TODO: open user settings
                     }),
