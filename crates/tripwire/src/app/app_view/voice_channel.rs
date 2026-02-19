@@ -126,112 +126,89 @@ impl TripwireApp {
             None
         };
 
-        div()
-            .w_full() // Full width of grid cell
-            .pb(px(100.0)) // Padding bottom as percentage creates aspect ratio
-            .relative()
+        // 16:9 aspect ratio card
+        v_flex()
+            .w_full()
+            .gap_3()
+            .p_4()
+            .rounded(cx.theme().radius_lg)
+            .bg(cx.theme().muted)
+            .border_2()
+            .when_some(speaking_ring, |this, color| {
+                this.border_color(color)
+            })
+            .when(speaking_ring.is_none(), |this| {
+                this.border_color(cx.theme().border)
+            })
             .child(
+                // Avatar with status overlay
                 div()
-                    .absolute()
-                    .inset_0()
-                    .p_4()
-                    .rounded(cx.theme().radius_lg)
-                    .bg(cx.theme().muted)
-                    .border_2()
-                    .when_some(speaking_ring, |this, color| {
-                        this.border_color(color)
-                    })
-                    .when(speaking_ring.is_none(), |this| {
-                        this.border_color(cx.theme().border)
-                    })
+                    .flex_1()
+                    .flex()
+                    .items_center()
+                    .justify_center()
                     .child(
-                        v_flex()
-                            .gap_3()
-                            .items_center()
-                            .justify_center()
-                            .h_full()
+                        div()
+                            .relative()
                             .child(
-                                // Avatar with status overlay
-                                div()
-                                    .relative()
-                                    .flex_shrink_0()
-                                    .child(
-                                        Avatar::new()
-                                            .name(participant.username.clone())
-                                            .with_size(gpui_component::Size::Large)
-                                    )
-                                    .child(
-                                        // Status indicators overlay
-                                        div()
-                                            .absolute()
-                                            .bottom_0()
-                                            .right_0()
-                                            .child(
-                                                h_flex()
-                                                    .gap_1()
-                                                    .when(participant.is_muted, |this| {
-                                                        this.child(
-                                                            div()
-                                                                .w(px(24.0))
-                                                                .h(px(24.0))
-                                                                .rounded_full()
-                                                                .bg(gpui::rgb(0xed4245))
-                                                                .flex()
-                                                                .items_center()
-                                                                .justify_center()
-                                                                .child(
-                                                                    div()
-                                                                        .text_xs()
-                                                                        .child("🔇")
-                                                                )
-                                                        )
-                                                    })
-                                                    .when(participant.is_deafened, |this| {
-                                                        this.child(
-                                                            div()
-                                                                .w(px(24.0))
-                                                                .h(px(24.0))
-                                                                .rounded_full()
-                                                                .bg(gpui::rgb(0x5865f2))
-                                                                .flex()
-                                                                .items_center()
-                                                                .justify_center()
-                                                                .child(
-                                                                    div()
-                                                                        .text_xs()
-                                                                        .child("🔇")
-                                                                )
-                                                        )
-                                                    })
-                                                    .when(participant.is_video, |this| {
-                                                        this.child(
-                                                            div()
-                                                                .w(px(24.0))
-                                                                .h(px(24.0))
-                                                                .rounded_full()
-                                                                .bg(gpui::rgb(0x23a55a))
-                                                                .flex()
-                                                                .items_center()
-                                                                .justify_center()
-                                                                .child(
-                                                                    div()
-                                                                        .text_xs()
-                                                                        .child("📹")
-                                                                )
-                                                        )
-                                                    })
-                                            )
-                                    )
+                                Avatar::new()
+                                    .name(participant.username.clone())
+                                    .with_size(gpui_component::Size::Large)
                             )
                             .child(
-                                // Username
-                                div()
-                                    .text_sm()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(cx.theme().foreground)
-                                    .child(participant.username)
+                                // Status indicators overlay
+                                h_flex()
+                                    .absolute()
+                                    .bottom(px(-8.0))
+                                    .right(px(-8.0))
+                                    .gap_1()
+                                    .when(participant.is_muted, |this| {
+                                        this.child(
+                                            div()
+                                                .size(px(24.0))
+                                                .rounded_full()
+                                                .bg(gpui::rgb(0xed4245))
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .child(div().text_xs().child("🔇"))
+                                        )
+                                    })
+                                    .when(participant.is_deafened, |this| {
+                                        this.child(
+                                            div()
+                                                .size(px(24.0))
+                                                .rounded_full()
+                                                .bg(gpui::rgb(0x5865f2))
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .child(div().text_xs().child("🔇"))
+                                        )
+                                    })
+                                    .when(participant.is_video, |this| {
+                                        this.child(
+                                            div()
+                                                .size(px(24.0))
+                                                .rounded_full()
+                                                .bg(gpui::rgb(0x23a55a))
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .child(div().text_xs().child("📹"))
+                                        )
+                                    })
                             )
                     )
+            )
+            .child(
+                // Username
+                div()
+                    .text_sm()
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .text_color(cx.theme().foreground)
+                    .text_center()
+                    .child(participant.username)
             )
             .into_any_element()
     }

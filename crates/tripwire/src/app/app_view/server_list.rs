@@ -12,6 +12,7 @@ use gpui_component::{
     scroll::ScrollableElement as _,
     tooltip::Tooltip,
     v_flex,
+    menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem},
 };
 
 use crate::app::{AppView, TripwireApp};
@@ -87,6 +88,33 @@ impl TripwireApp {
                                     .relative()
                                     .tooltip(move |window, cx| {
                                         Tooltip::new(name.clone()).build(window, cx)
+                                    })
+                                    .context_menu({
+                                        let app = cx.entity().clone();
+                                        move |menu, _, cx| {
+                                            menu.item(
+                                                PopupMenuItem::new("Server Settings")
+                                                    .icon(IconName::Settings)
+                                                    .on_click({
+                                                        let app = app.clone();
+                                                        move |_, _, cx| {
+                                                            app.update(cx, |this, cx| {
+                                                                this.open_server_settings(cx);
+                                                            });
+                                                        }
+                                                    })
+                                            )
+                                            .separator()
+                                            .item(
+                                                PopupMenuItem::new("Copy Server ID")
+                                                    .icon(IconName::Copy)
+                                            )
+                                            .separator()
+                                            .item(
+                                                PopupMenuItem::new("Leave Server")
+                                                    .icon(IconName::ArrowLeft)
+                                            )
+                                        }
                                     })
                                     .child(
                                         div()

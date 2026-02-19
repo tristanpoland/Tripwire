@@ -10,6 +10,7 @@ pub mod members_panel;
 pub mod profile_card;
 pub mod server_list;
 pub mod settings;
+pub mod server_settings;
 pub mod voice_channel;
 pub mod stage_channel;
 
@@ -80,6 +81,10 @@ impl TripwireApp {
             // Settings modal overlay (if open)
             .when(self.show_settings, |this| {
                 this.child(self.render_settings_modal(window, cx))
+            })
+            // Server Settings modal overlay (if open)
+            .when(self.show_server_settings, |this| {
+                this.child(self.render_server_settings_modal(window, cx))
             })
             .into_any_element()
     }

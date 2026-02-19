@@ -58,6 +58,10 @@ pub struct TripwireApp {
     // ── Settings state ──────────────────────────────────────────────────────
     pub(crate) show_settings: bool,
     pub(crate) settings_screen: SettingsScreen,
+    
+    // ── Server Settings state ───────────────────────────────────────────────
+    pub(crate) show_server_settings: bool,
+    pub(crate) server_settings_screen: app_view::server_settings::ServerSettingsScreen,
 
     pub(crate) _subscriptions: Vec<Subscription>,
 }
@@ -127,6 +131,8 @@ impl TripwireApp {
             user_profiles: HashMap::new(),
             show_settings: false,
             settings_screen: SettingsScreen::Account,
+            show_server_settings: false,
+            server_settings_screen: app_view::server_settings::ServerSettingsScreen::Overview,
             _subscriptions: vec![msg_sub],
         }
     }
@@ -445,6 +451,24 @@ impl TripwireApp {
 
     pub(crate) fn switch_settings_screen(&mut self, screen: SettingsScreen, cx: &mut Context<Self>) {
         self.settings_screen = screen;
+        cx.notify();
+    }
+    
+    // ── Server Settings helpers ─────────────────────────────────────────────
+    
+    pub(crate) fn open_server_settings(&mut self, cx: &mut Context<Self>) {
+        self.show_server_settings = true;
+        self.server_settings_screen = app_view::server_settings::ServerSettingsScreen::Overview;
+        cx.notify();
+    }
+    
+    pub(crate) fn close_server_settings(&mut self, cx: &mut Context<Self>) {
+        self.show_server_settings = false;
+        cx.notify();
+    }
+    
+    pub(crate) fn switch_server_settings_screen(&mut self, screen: app_view::server_settings::ServerSettingsScreen, cx: &mut Context<Self>) {
+        self.server_settings_screen = screen;
         cx.notify();
     }
 

@@ -46,6 +46,7 @@ impl TripwireApp {
             .child(
                 v_flex()
                     .gap_0()
+                    // TODO: Add banner image support (requires API changes to include banner hash in user profile)
                     // Banner
                     .child(
                         div()

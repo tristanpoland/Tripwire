@@ -189,40 +189,35 @@ impl TripwireApp {
             None
         };
 
-        div()
+        // 16:9 aspect ratio card
+        v_flex()
             .w_full()
-            .pb(px(100.0))
-            .relative()
+            .gap_3()
+            .p_4()
+            .rounded(cx.theme().radius_lg)
+            .bg(cx.theme().background)
+            .border_2()
+            .when_some(speaking_ring, |this, color| {
+                this.border_color(color)
+            })
+            .when(speaking_ring.is_none(), |this| {
+                this.border_color(cx.theme().border)
+            })
             .child(
+                // Avatar with badges
                 div()
-                    .absolute()
-                    .inset_0()
-                    .p_4()
-                    .rounded(cx.theme().radius_lg)
-                    .bg(cx.theme().background)
-                    .border_2()
-                    .when_some(speaking_ring, |this, color| {
-                        this.border_color(color)
-                    })
-                    .when(speaking_ring.is_none(), |this| {
-                        this.border_color(cx.theme().border)
-                    })
+                    .flex_1()
+                    .flex()
+                    .items_center()
+                    .justify_center()
                     .child(
-                        v_flex()
-                            .gap_3()
-                            .items_center()
-                            .justify_center()
-                            .h_full()
+                        div()
+                            .relative()
                             .child(
-                                // Avatar with badge
-                                div()
-                                    .relative()
-                                    .flex_shrink_0()
-                                    .child(
-                                        Avatar::new()
-                                            .name(participant.username.clone())
-                                            .with_size(gpui_component::Size::Large)
-                                    )
+                                Avatar::new()
+                                    .name(participant.username.clone())
+                                    .with_size(gpui_component::Size::Large)
+                            )
                             .when(participant.role != StageRole::Audience, |this| {
                                 this.child(
                                     div()
@@ -246,32 +241,27 @@ impl TripwireApp {
                                 this.child(
                                     div()
                                         .absolute()
-                                        .bottom_0()
-                                        .right_0()
-                                        .w(px(24.0))
-                                        .h(px(24.0))
+                                        .bottom(px(-8.0))
+                                        .right(px(-8.0))
+                                        .size(px(24.0))
                                         .rounded_full()
                                         .bg(gpui::rgb(0xed4245))
                                         .flex()
                                         .items_center()
                                         .justify_center()
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .child("🔇")
-                                        )
+                                        .child(div().text_xs().child("🔇"))
                                 )
                             })
-                                    )
-                            .child(
-                                // Username
-                                div()
-                                    .text_sm()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(cx.theme().foreground)
-                                    .child(participant.username)
-                            )
                     )
+            )
+            .child(
+                // Username
+                div()
+                    .text_sm()
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .text_color(cx.theme().foreground)
+                    .text_center()
+                    .child(participant.username)
             )
             .into_any_element()
     }
