@@ -107,7 +107,7 @@ impl TripwireApp {
                     .icon(IconName::Search)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("Search").build(window, cx))
+                    .tooltip("Search")
                     .on_click(|_, _, _| {}),
             )
             .child(
@@ -115,7 +115,7 @@ impl TripwireApp {
                     .icon(IconName::PanelRight)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("Toggle Member List").build(window, cx))
+                    .tooltip("Toggle Member List")
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.show_members = !this.show_members;
                         cx.notify();

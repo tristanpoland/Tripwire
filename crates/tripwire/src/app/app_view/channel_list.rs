@@ -41,6 +41,12 @@ impl TripwireApp {
             }
         };
 
+        // Pre-compute category elements to avoid FnMut borrow checker issues.
+        let mut category_elements: Vec<AnyElement> = Vec::new();
+        for cat in &server.categories {
+            category_elements.push(self.render_category(cat, cx).into_any_element());
+        }
+
         v_flex()
             .w(px(PANEL_WIDTH))
             .h_full()
@@ -84,9 +90,7 @@ impl TripwireApp {
                     .flex_1()
                     .overflow_y_scrollbar()
                     .py_2()
-                    .children(server.categories.iter().map(|cat| {
-                        self.render_category(cat, cx)
-                    })),
+                    .children(category_elements),
             )
             // ── User bar ─────────────────────────────────────────────────────
             .child(self.render_user_bar(cx))
@@ -284,7 +288,7 @@ impl TripwireApp {
                     .icon(IconName::Settings)
                     .ghost()
                     .xsmall()
-                    .tooltip(|window, cx| Tooltip::new("User Settings").build(window, cx))
+                    .tooltip("User Settings")
                     .on_click(|_, _, _| {
                         // TODO: open user settings
                     }),
