@@ -44,6 +44,8 @@ pub struct TripwireApp {
     pub(crate) message_input: Entity<InputState>,
     pub(crate) show_members: bool,
     pub(crate) pending_attachment: Option<Attachment>,
+    pub(crate) emoji_search: String,
+    pub(crate) active_emoji_picker_message: Option<String>,
 
     pub(crate) _subscriptions: Vec<Subscription>,
 }
@@ -106,6 +108,8 @@ impl TripwireApp {
             message_input,
             show_members: true,
             pending_attachment: None,
+            emoji_search: String::new(),
+            active_emoji_picker_message: None,
             _subscriptions: vec![msg_sub],
         }
     }

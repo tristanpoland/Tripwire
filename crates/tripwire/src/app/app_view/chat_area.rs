@@ -2,7 +2,7 @@
 
 use gpui::{
     AnyElement, Context, ElementId, IntoElement as _, SharedString, Window, div,
-    prelude::FluentBuilder as _, px, StyledImage as _,
+    prelude::FluentBuilder as _, px, StyledImage as _, IntoElement,
 };
 use gpui::InteractiveElement;
 use gpui::StatefulInteractiveElement;
@@ -17,7 +17,6 @@ use gpui_component::{
     h_flex, v_flex,
     input::Input,
     scroll::ScrollableElement as _,
-    tooltip::Tooltip,
 };
 
 use crate::app::{AppView, TripwireApp};
@@ -259,76 +258,177 @@ impl TripwireApp {
         let timestamp = msg.timestamp.clone();
         let is_edited = msg.edited;
         let has_attachment = msg.attachment.is_some();
+        let message_id = msg.id.clone();
+        let reactions = msg.reactions.clone();
+        let user_id = self.auth.current_user.as_ref().map(|u| u.id.clone()).unwrap_or_default();
 
-        h_flex()
-            .id(ElementId::Name(SharedString::from(format!("msg-{index}"))))
-            .gap_3()
-            .py_2()
-            .px_3()
-            .items_start()
-            .rounded(cx.theme().radius)
-            .hover(|s| s.bg(cx.theme().accent))
-            // Avatar
+        div()
+            .relative()
+            .group("message-hover")
             .child(
-                div()
-                    .flex_shrink_0()
+                h_flex()
+                    .id(ElementId::Name(SharedString::from(format!("msg-{index}"))))
+                    .gap_3()
+                    .py_2()
+                    .px_3()
+                    .items_start()
+                    .rounded(cx.theme().radius)
+                    .hover(|s| s.bg(cx.theme().accent))
+                    // Avatar
                     .child(
-                        Avatar::new()
-                            .name(avatar_name)
-                            .with_size(gpui_component::Size::Medium),
-                    ),
-            )
-            // Content block
-            .child(
-                v_flex()
-                    .flex_1()
-                    .min_w_0()
-                    .gap_1()
-                    // Author + timestamp row
+                        div()
+                            .flex_shrink_0()
+                            .child(
+                                Avatar::new()
+                                    .name(avatar_name)
+                                    .with_size(gpui_component::Size::Medium),
+                            ),
+                    )
+                    // Content block
                     .child(
-                        h_flex()
-                            .gap_2()
-                            .items_baseline()
+                        v_flex()
+                            .flex_1()
+                            .min_w_0()
+                            .gap_1()
+                            // Author + timestamp row
                             .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(cx.theme().foreground)
-                                    .child(author_name),
+                                h_flex()
+                                    .gap_2()
+                                    .items_baseline()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_color(cx.theme().foreground)
+                                            .child(author_name),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(cx.theme().muted_foreground)
+                                            .child(timestamp),
+                                    )
+                                    .when(is_edited, |this| {
+                                        this.child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(cx.theme().muted_foreground)
+                                                .italic()
+                                                .child("(edited)"),
+                                        )
+                                    }),
                             )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(cx.theme().muted_foreground)
-                                    .child(timestamp),
-                            )
-                            .when(is_edited, |this| {
+                            // Message body
+                            .when(!content.is_empty(), |this| {
                                 this.child(
                                     div()
-                                        .text_xs()
-                                        .text_color(cx.theme().muted_foreground)
-                                        .italic()
-                                        .child("(edited)"),
+                                        .text_sm()
+                                        .text_color(cx.theme().foreground)
+                                        .child(content),
+                                )
+                            })
+                            // Attachment (if present)
+                            .when(has_attachment, |this| {
+                                if let Some(ref attachment) = msg.attachment {
+                                    this.child(self.render_attachment(attachment, cx))
+                                } else {
+                                    this
+                                }
+                            })
+                            // Reactions (if any)
+                            .when(!reactions.is_empty(), |this| {
+                                this.child(
+                                    h_flex()
+                                        .mt_1()
+                                        .gap_1()
+                                        .flex_wrap()
+                                        .children(
+                                            reactions.iter().map(|(emoji, users)| {
+                                                let count = users.len();
+                                                let user_reacted = users.contains(&user_id);
+                                                let emoji_clone = emoji.clone();
+                                                let msg_id = message_id.clone();
+                                                
+                                                div()
+                                                    .px_2()
+                                                    .py_1()
+                                                    .rounded(cx.theme().radius)
+                                                    .border_1()
+                                                    .when(user_reacted, |this| {
+                                                        this.bg(cx.theme().accent)
+                                                            .border_color(cx.theme().accent_foreground)
+                                                    })
+                                                    .when(!user_reacted, |this| {
+                                                        this.bg(cx.theme().secondary)
+                                                            .border_color(cx.theme().border)
+                                                    })
+                                                    .hover(|s| s.bg(cx.theme().accent).cursor_pointer())
+                                                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                        this.toggle_reaction(msg_id.clone(), emoji_clone.clone(), cx);
+                                                    }))
+                                                    .child(
+                                                        h_flex()
+                                                            .gap_1()
+                                                            .items_center()
+                                                            .child(
+                                                                div()
+                                                                    .text_sm()
+                                                                    .child(emoji.clone())
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .text_xs()
+                                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                                    .text_color(if user_reacted {
+                                                                        cx.theme().accent_foreground
+                                                                    } else {
+                                                                        cx.theme().muted_foreground
+                                                                    })
+                                                                    .child(count.to_string())
+                                                            )
+                                                    )
+                                            })
+                                        )
                                 )
                             }),
+                    ),
+            )
+            // Hover toolbar (Discord-style) - positioned at top-right of message
+            .child(
+                div()
+                    .absolute()
+                    .top(px(-8.0))
+                    .right(px(16.0))
+                    .occlude()
+                    .child(
+                        div()
+                            .flex()
+                            .gap_px()
+                            .px_1()
+                            .py_px()
+                            .rounded(cx.theme().radius)
+                            .bg(cx.theme().background)
+                            .border_1()
+                            .border_color(cx.theme().border)
+                            .shadow_md()
+                            .child(
+                                gpui_component::popover::Popover::new(format!("emoji-picker-{}", message_id))
+                                    .trigger(
+                                        Button::new(format!("add-reaction-{}", message_id))
+                                            .icon(IconName::Plus)
+                                            .ghost()
+                                            .xsmall()
+                                            .tooltip("Add Reaction")
+                                    )
+                                    .content({
+                                        let msg_id = message_id.clone();
+                                        let app_entity = cx.entity();
+                                        move |_state, _window, cx| {
+                                            Self::render_simple_emoji_picker(msg_id.clone(), app_entity.clone(), cx)
+                                        }
+                                    })
+                            )
                     )
-                    // Message body
-                    .when(!content.is_empty(), |this| {
-                        this.child(
-                            div()
-                                .text_sm()
-                                .text_color(cx.theme().foreground)
-                                .child(content),
-                        )
-                    })
-                    // Attachment (if present)
-                    .when(has_attachment, |this| {
-                        if let Some(ref attachment) = msg.attachment {
-                            this.child(self.render_attachment(attachment, cx))
-                        } else {
-                            this
-                        }
-                    }),
             )
     }
 
@@ -470,5 +570,83 @@ impl TripwireApp {
                             })),
                     )
             )
+    }
+
+    fn render_simple_emoji_picker(
+        message_id: String,
+        app_entity: gpui::Entity<TripwireApp>,
+        cx: &mut Context<gpui_component::popover::PopoverState>,
+    ) -> gpui::AnyElement {
+        let emojis = vec![
+            vec!["😀", "😃", "😄", "😁", "😅", "😂", "🤣", "😊"],
+            vec!["😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘"],
+            vec!["😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪"],
+            vec!["🤨", "🧐", "🤓", "😎", "🥳", "😏", "😒", "😞"],
+            vec!["😔", "😟", "😕", "🙁", "😣", "😖", "😫", "😩"],
+            vec!["🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯"],
+            vec!["😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓"],
+            vec!["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍"],
+            vec!["💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘"],
+            vec!["👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙"],
+            vec!["👈", "👉", "👆", "👇", "☝️", "✋", "🤚", "🖐️"],
+            vec!["👋", "🤝", "🙏", "✍️", "💪", "👏", "🙌", "👐"],
+            vec!["🎉", "🎊", "🎈", "🎁", "🏆", "🥇", "🥈", "🥉"],
+            vec!["⚡", "✨", "💫", "⭐", "🌟", "💥", "🔥", "🌈"],
+            vec!["✅", "❌", "⚠️", "❗", "❓", "💯", "🆒", "🆕"],
+        ];
+
+        div()
+            .p_2()
+            .w(gpui::px(280.0))
+            .max_h(gpui::px(320.0))
+            .overflow_y_scrollbar()
+            .child(
+                v_flex()
+                    .gap_1()
+                    .children(
+                        emojis.iter().map(|row| {
+                            h_flex()
+                                .gap_1()
+                                .children(
+                                    row.iter().map(|emoji| {
+                                        let emoji_str = emoji.to_string();
+                                        let msg_id = message_id.clone();
+                                        let app = app_entity.clone();
+                                        let emoji_for_closure = emoji_str.clone();
+                                        
+                                        div()
+                                            .p_2()
+                                            .rounded(cx.theme().radius)
+                                            .hover(|s| s.bg(cx.theme().accent).cursor_pointer())
+                                            .on_mouse_down(
+                                                gpui::MouseButton::Left,
+                                                cx.listener(move |_state, _, window, cx| {
+                                                    // Toggle the reaction on the app
+                                                    let app = app.clone();
+                                                    let msg_id = msg_id.clone();
+                                                    let emoji_str = emoji_for_closure.clone();
+                                                    
+                                                    // Defer the update to avoid context lifetime issues
+                                                    cx.defer(move |cx| {
+                                                        _ = app.update(cx, |app, cx| {
+                                                            app.toggle_reaction(msg_id, emoji_str, cx);
+                                                        });
+                                                    });
+                                                    
+                                                    // Dismiss the popover
+                                                    cx.emit(gpui::DismissEvent);
+                                                }),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_lg()
+                                                    .child(emoji_str)
+                                            )
+                                    })
+                                )
+                        })
+                    )
+            )
+            .into_any_element()
     }
 }
