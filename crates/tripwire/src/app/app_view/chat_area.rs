@@ -128,17 +128,18 @@ impl TripwireApp {
         messages: &[Message],
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
+        // Pre-compute elements to avoid FnMut borrow-checker issues with cx.
+        let mut message_elements: Vec<gpui::AnyElement> = Vec::new();
+        for (ix, msg) in messages.iter().enumerate() {
+            message_elements.push(self.render_message(ix, msg, cx).into_any_element());
+        }
+
         div()
             .flex_1()
             .overflow_y_scrollbar()
             .px_4()
             .py_4()
-            .children(
-                messages
-                    .iter()
-                    .enumerate()
-                    .map(|(ix, msg)| self.render_message(ix, msg, cx)),
-            )
+            .children(message_elements)
     }
 
     fn render_message(

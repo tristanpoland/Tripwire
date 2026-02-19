@@ -237,8 +237,8 @@ impl TripwireApp {
                         Avatar::new()
                             .name(
                                 user.as_ref()
-                                    .map(|u| u.username.as_str())
-                                    .unwrap_or("?"),
+                                    .map(|u| u.username.clone())
+                                    .unwrap_or_else(|| "?".to_string()),
                             )
                             .xsmall(),
                     )
