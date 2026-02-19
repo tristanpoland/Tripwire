@@ -147,6 +147,24 @@ impl Server {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Attachment {
+    pub filename: String,
+    pub mime_type: String,
+    pub base64_data: String,
+    pub size: usize,
+}
+
+impl Attachment {
+    pub fn is_image(&self) -> bool {
+        self.mime_type.starts_with("image/")
+    }
+
+    pub fn size_mb(&self) -> f64 {
+        self.size as f64 / (1024.0 * 1024.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Message {
     pub id: String,
@@ -154,6 +172,7 @@ pub struct Message {
     pub content: String,
     pub timestamp: String,
     pub edited: bool,
+    pub attachment: Option<Attachment>,
 }
 
 #[derive(Debug, Clone)]

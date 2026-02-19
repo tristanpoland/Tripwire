@@ -2,7 +2,7 @@
 
 use gpui::{
     AnyElement, Context, ElementId, IntoElement as _, SharedString, Window, div,
-    prelude::FluentBuilder as _, px,
+    prelude::FluentBuilder as _, px, StyledImage as _,
 };
 use gpui::InteractiveElement;
 use gpui::StatefulInteractiveElement;
@@ -258,6 +258,7 @@ impl TripwireApp {
         let content = msg.content.clone();
         let timestamp = msg.timestamp.clone();
         let is_edited = msg.edited;
+        let has_attachment = msg.attachment.is_some();
 
         h_flex()
             .id(ElementId::Name(SharedString::from(format!("msg-{index}"))))
@@ -312,12 +313,44 @@ impl TripwireApp {
                             }),
                     )
                     // Message body
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(cx.theme().foreground)
-                            .child(content),
-                    ),
+                    .when(!content.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .text_sm()
+                                .text_color(cx.theme().foreground)
+                                .child(content),
+                        )
+                    })
+                    // Attachment (if present)
+                    .when(has_attachment, |this| {
+                        if let Some(ref attachment) = msg.attachment {
+                            this.child(self.render_attachment(attachment, cx))
+                        } else {
+                            this
+                        }
+                    }),
+            )
+    }
+
+    fn render_attachment(
+        &self,
+        attachment: &crate::models::Attachment,
+        cx: &mut Context<Self>,
+    ) -> impl gpui::IntoElement {
+        let data_url = format!("data:{};base64,{}", attachment.mime_type, attachment.base64_data);
+        
+        div()
+            .mt_2()
+            .max_w(px(400.0))
+            .rounded(cx.theme().radius)
+            .border_1()
+            .border_color(cx.theme().border)
+            .overflow_hidden()
+            .cursor_pointer()
+            .child(
+                gpui::img(data_url)
+                    .w_full()
+                    .object_fit(gpui::ObjectFit::Cover)
             )
     }
 
@@ -328,59 +361,114 @@ impl TripwireApp {
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
         let _ = channel_name;
-        h_flex()
+        let has_attachment = self.pending_attachment.is_some();
+        
+        v_flex()
             .flex_shrink_0()
-            .px_4()
-            .pb_4()
-            .pt_2()
             .gap_2()
-            .items_center()
             .child(
-                div()
-                    .flex_1()
-                    .px_3()
-                    .py_3()
-                    .gap_2()
-                    .rounded(cx.theme().radius_lg)
-                    .bg(cx.theme().popover)
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .items_center()
-                            // Attachment button
-                            .child(
-                                Button::new("btn-attach")
-                                    .icon(IconName::Plus)
-                                    .ghost()
-                                    .xsmall()
-                                    .tooltip("Attach File")
-                                    .on_click(|_, _, _| {}),
-                            )
-                            // Text input
-                            .child(div().flex_1().child(Input::new(&self.message_input).appearance(false)))
-                            // Emoji button
-                            .child(
-                                Button::new("btn-emoji")
-                                    .icon(IconName::Star)
-                                    .ghost()
-                                    .xsmall()
-                                    .tooltip("Emoji")
-                                    .on_click(|_, _, _| {}),
-                            ),
-                    ),
+                // Attachment preview
+                if let Some(ref attachment) = self.pending_attachment {
+                    div()
+                        .px_4()
+                        .child(
+                            h_flex()
+                                .gap_2()
+                                .items_center()
+                                .px_3()
+                                .py_2()
+                                .rounded(cx.theme().radius)
+                                .bg(cx.theme().muted)
+                                .border_1()
+                                .border_color(cx.theme().border)
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .text_color(cx.theme().foreground)
+                                                .child(format!("📎 {}", attachment.filename))
+                                        )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(cx.theme().muted_foreground)
+                                                .child(format!("{:.2} MB", attachment.size_mb()))
+                                        )
+                                )
+                                .child(
+                                    Button::new("btn-remove-attachment")
+                                        .icon(IconName::Close)
+                                        .ghost()
+                                        .xsmall()
+                                        .tooltip("Remove attachment")
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.clear_attachment(cx);
+                                        })),
+                                )
+                        )
+                        .into_any_element()
+                } else {
+                    div().into_any_element()
+                }
             )
-            // Send button (outside input box)
             .child(
-                Button::new("btn-send")
-                    .icon(IconName::ArrowRight)
-                    .primary()
-                    .small()
-                    .tooltip("Send Message")
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        this.send_message(window, cx);
-                    })),
+                h_flex()
+                    .px_4()
+                    .pb_4()
+                    .when(!has_attachment, |this| this.pt_2())
+                    .gap_2()
+                    .items_center()
+                    .child(
+                        div()
+                            .flex_1()
+                            .px_3()
+                            .py_3()
+                            .gap_2()
+                            .rounded(cx.theme().radius_lg)
+                            .bg(cx.theme().popover)
+                            .border_1()
+                            .border_color(cx.theme().border)
+                            .child(
+                                h_flex()
+                                    .gap_2()
+                                    .items_center()
+                                    // Attachment button
+                                    .child(
+                                        Button::new("btn-attach")
+                                            .icon(IconName::Plus)
+                                            .ghost()
+                                            .xsmall()
+                                            .tooltip("Attach File")
+                                            .on_click(cx.listener(|this, _, window, cx| {
+                                                this.attach_file(window, cx);
+                                            })),
+                                    )
+                                    // Text input
+                                    .child(div().flex_1().child(Input::new(&self.message_input).appearance(false)))
+                                    // Emoji button
+                                    .child(
+                                        Button::new("btn-emoji")
+                                            .icon(IconName::Star)
+                                            .ghost()
+                                            .xsmall()
+                                            .tooltip("Emoji")
+                                            .on_click(|_, _, _| {}),
+                                    ),
+                            ),
+                    )
+                    // Send button (outside input box)
+                    .child(
+                        Button::new("btn-send")
+                            .icon(IconName::ArrowRight)
+                            .primary()
+                            .small()
+                            .tooltip("Send Message")
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.send_message(window, cx);
+                            })),
+                    )
             )
     }
 }

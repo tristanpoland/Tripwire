@@ -217,6 +217,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "Hey everyone! How's it going? 👋".to_string(),
                 timestamp: "Today at 9:00 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "m2".to_string(),
@@ -224,6 +225,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "Doing great! Just finished setting up Tripwire locally.".to_string(),
                 timestamp: "Today at 9:02 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "m3".to_string(),
@@ -231,6 +233,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "This UI is looking amazing. Love the Discord vibe!".to_string(),
                 timestamp: "Today at 9:05 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "m4".to_string(),
@@ -238,6 +241,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "Thanks! Built entirely with GPUI components. The component library is fantastic.".to_string(),
                 timestamp: "Today at 9:07 AM".to_string(),
                 edited: true,
+                attachment: None,
             },
             Message {
                 id: "m5".to_string(),
@@ -245,6 +249,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "I saw the auth screen — nice touch with the dev bypass button for testing.".to_string(),
                 timestamp: "Today at 9:10 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "m6".to_string(),
@@ -252,6 +257,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "The resizable panels from the Dock system would make a great addition here.".to_string(),
                 timestamp: "Today at 9:12 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "m7".to_string(),
@@ -259,6 +265,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "100% on the roadmap. Also planning markdown rendering for messages using the Text component.".to_string(),
                 timestamp: "Today at 9:15 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
         ],
         "101" => vec![
@@ -268,6 +275,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "🎉 Welcome to Tripwire! This is our brand-new communication platform.".to_string(),
                 timestamp: "Yesterday at 8:00 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "a2".to_string(),
@@ -275,6 +283,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "We're in early alpha — expect rapid changes. Your feedback is welcome in #general.".to_string(),
                 timestamp: "Yesterday at 8:01 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
         ],
         "201" => vec![
@@ -284,6 +293,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "Anyone familiar with the GPUI entity system? I'm trying to share state across views.".to_string(),
                 timestamp: "Today at 10:30 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
             Message {
                 id: "d2".to_string(),
@@ -291,6 +301,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "Use a Global or pass Entity<T> handles around. Globals are easiest for app-wide state.".to_string(),
                 timestamp: "Today at 10:35 AM".to_string(),
                 edited: false,
+                attachment: None,
             },
         ],
         _ => vec![
@@ -300,6 +311,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 content: "Be the first to send a message in this channel!".to_string(),
                 timestamp: "Today".to_string(),
                 edited: false,
+                attachment: None,
             },
         ],
     }
@@ -351,14 +363,16 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                     content: "Hey Bob! Want to pair program later?".to_string(),
                     timestamp: "Today at 12:30 PM".to_string(),
                     edited: false,
-                },
+                attachment: None,
+            },
                 Message {
                     id: "dm2".to_string(),
                     author: bob,
                     content: "That sounds great! Let's do it.".to_string(),
                     timestamp: "Today at 12:45 PM".to_string(),
                     edited: false,
-                },
+                attachment: None,
+            },
             ]
         }
         "dm-frank" => {
@@ -370,7 +384,8 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                     content: "Check out this new library I found".to_string(),
                     timestamp: "Today at 10:20 AM".to_string(),
                     edited: false,
-                },
+                attachment: None,
+            },
             ]
         }
         _ => vec![],

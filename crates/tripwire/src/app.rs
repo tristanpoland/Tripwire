@@ -5,7 +5,7 @@ use gpui_component::input::{InputEvent, InputState};
 use gpui::AppContext;
 use crate::auth_state::AuthState;
 use crate::mock_data;
-use crate::models::{Channel, ChannelKind, DirectMessageChannel, Message, Server};
+use crate::models::{Attachment, Channel, ChannelKind, DirectMessageChannel, Message, Server};
 use crate::titlebar::TripwireTitleBar;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,6 +43,7 @@ pub struct TripwireApp {
     pub(crate) dm_messages: HashMap<String, Vec<Message>>,
     pub(crate) message_input: Entity<InputState>,
     pub(crate) show_members: bool,
+    pub(crate) pending_attachment: Option<Attachment>,
 
     pub(crate) _subscriptions: Vec<Subscription>,
 }
@@ -104,6 +105,7 @@ impl TripwireApp {
             dm_messages,
             message_input,
             show_members: true,
+            pending_attachment: None,
             _subscriptions: vec![msg_sub],
         }
     }
@@ -226,7 +228,7 @@ impl TripwireApp {
 
     pub(crate) fn send_message(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let content = self.message_input.read(cx).value().trim().to_string();
-        if content.is_empty() {
+        if content.is_empty() && self.pending_attachment.is_none() {
             return;
         }
         
@@ -237,6 +239,7 @@ impl TripwireApp {
                 content,
                 timestamp: "Just now".to_string(),
                 edited: false,
+                attachment: self.pending_attachment.take(),
             };
             
             match self.current_view {
@@ -256,6 +259,84 @@ impl TripwireApp {
         self.message_input.update(cx, |state, cx| {
             state.set_value("", window, cx);
         });
+        cx.notify();
+    }
+
+    pub(crate) fn attach_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let paths_future = cx.prompt_for_paths(gpui::PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some("Select an image or GIF".into()),
+        });
+
+        let entity = cx.entity();
+        cx.spawn_in(window, async move |_, window| {
+            if let Ok(Ok(Some(paths))) = paths_future.await {
+                if let Some(path) = paths.first() {
+                    window.update(|window, cx| {
+                        entity.update(cx, |this, cx| {
+                            this.process_attachment(path.clone(), window, cx);
+                        })
+                    }).ok();
+                }
+            }
+        }).detach();
+    }
+
+    fn process_attachment(
+        &mut self,
+        path: std::path::PathBuf,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // Read file
+        if let Ok(data) = std::fs::read(&path) {
+            // Check file size (5MB limit)
+            let size = data.len();
+            if size > 5 * 1024 * 1024 {
+                // TODO: Show error notification
+                eprintln!("File too large: {} bytes (max 5MB)", size);
+                return;
+            }
+
+            // Determine MIME type from extension
+            let mime_type = match path.extension().and_then(|s| s.to_str()) {
+                Some("png") => "image/png",
+                Some("jpg") | Some("jpeg") => "image/jpeg",
+                Some("gif") => "image/gif",
+                Some("webp") => "image/webp",
+                _ => {
+                    eprintln!("Unsupported file type");
+                    return;
+                }
+            };
+
+            // Convert to base64
+            let base64_data = base64_encode(&data);
+
+            // Get filename
+            let filename = path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            self.pending_attachment = Some(Attachment {
+                filename,
+                mime_type: mime_type.to_string(),
+                base64_data,
+                size,
+            });
+
+            cx.notify();
+        } else {
+            eprintln!("Failed to read file: {:?}", path);
+        }
+    }
+
+    pub(crate) fn clear_attachment(&mut self, cx: &mut Context<Self>) {
+        self.pending_attachment = None;
         cx.notify();
     }
 
@@ -301,4 +382,33 @@ fn timestamp_id() -> String {
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     format!("msg_{nanos}")
+}
+
+fn base64_encode(data: &[u8]) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    
+    for chunk in data.chunks(3) {
+        let mut buf = [0u8; 3];
+        for (i, &byte) in chunk.iter().enumerate() {
+            buf[i] = byte;
+        }
+        
+        result.push(CHARS[(buf[0] >> 2) as usize] as char);
+        result.push(CHARS[(((buf[0] & 0x03) << 4) | (buf[1] >> 4)) as usize] as char);
+        
+        if chunk.len() > 1 {
+            result.push(CHARS[(((buf[1] & 0x0f) << 2) | (buf[2] >> 6)) as usize] as char);
+            if chunk.len() > 2 {
+                result.push(CHARS[(buf[2] & 0x3f) as usize] as char);
+            } else {
+                result.push('=');
+            }
+        } else {
+            result.push('=');
+            result.push('=');
+        }
+    }
+    
+    result
 }
