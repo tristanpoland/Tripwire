@@ -2,23 +2,26 @@
 //!
 //! Implements `TripwireApp::render_auth`.
 
-use gpui::{AnyElement, Context, IntoElement as _, SharedString, Window, div, prelude::*};
+use gpui::{
+    AnyElement, AppContext as _, Context, InteractiveElement as _, IntoElement as _,
+    ParentElement as _, Styled as _, Window, div, prelude::FluentBuilder as _, px,
+};
 use gpui_component::{
-    ActiveTheme as _,
+    ActiveTheme as _, StyledExt as _,
     button::{Button, ButtonVariants as _},
     h_flex, v_flex,
-    input::{Input, InputEvent, InputState},
+    input::Input,
 };
-use gpui::InteractiveElement;
-use gpui::StatefulInteractiveElement;
-use gpui::ParentElement;
-use gpui::Styled;
-use gpui_component::StyledExt;
+
 use crate::app::TripwireApp;
 
 impl TripwireApp {
     /// Render the full auth / login screen.
-    pub(crate) fn render_auth(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(crate) fn render_auth(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let has_error = self.auth.login_error.is_some();
         let error_msg = self.auth.login_error.clone().unwrap_or_default();
 
@@ -28,14 +31,14 @@ impl TripwireApp {
             .justify_center()
             .bg(cx.theme().background)
             .child(
-                // ── Card ────────────────────────────────────────────────────
                 v_flex()
-                    .w(gpui::px(440.))
+                    .w(px(440.))
                     .gap_6()
                     .p_8()
                     .rounded(cx.theme().radius_lg)
-                    .bg(cx.theme().card)
-                    .shadow_lg()
+                    .bg(cx.theme().popover)
+                    .border_1()
+                    .border_color(cx.theme().border)
                     // ── Branding ────────────────────────────────────────────
                     .child(
                         v_flex()
@@ -44,7 +47,7 @@ impl TripwireApp {
                             .child(
                                 div()
                                     .text_2xl()
-                                    .font_bold()
+                                    .font_semibold()
                                     .text_color(cx.theme().foreground)
                                     .child("Tripwire"),
                             )
@@ -67,43 +70,31 @@ impl TripwireApp {
                         this.child(
                             div()
                                 .text_sm()
-                                .text_color(cx.theme().destructive)
+                                .text_color(cx.theme().danger)
                                 .child(error_msg),
                         )
                     })
                     // ── Actions ──────────────────────────────────────────────
-                    .child(self.login_actions(window, cx))
+                    .child(self.login_actions(cx))
                     // ── Divider ─────────────────────────────────────────────
                     .child(
                         h_flex()
                             .items_center()
                             .gap_3()
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .h(gpui::px(1.))
-                                    .bg(cx.theme().border),
-                            )
+                            .child(div().flex_1().h(px(1.)).bg(cx.theme().border))
                             .child(
                                 div()
                                     .text_xs()
                                     .text_color(cx.theme().muted_foreground)
                                     .child("OR"),
                             )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .h(gpui::px(1.))
-                                    .bg(cx.theme().border),
-                            ),
+                            .child(div().flex_1().h(px(1.)).bg(cx.theme().border)),
                     )
                     // ── Dev bypass ──────────────────────────────────────────
                     .child(self.bypass_button(cx)),
             )
             .into_any_element()
     }
-
-    // ── Helper builders ───────────────────────────────────────────────────────
 
     fn email_field(&self, cx: &mut Context<Self>) -> impl gpui::IntoElement {
         v_flex()
@@ -131,21 +122,19 @@ impl TripwireApp {
             .child(Input::new(&self.password_input).mask_toggle())
     }
 
-    fn login_actions(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        v_flex()
-            .gap_2()
-            .child(
-                Button::new("btn-login")
-                    .label("Log In")
-                    .primary()
-                    .w_full()
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        let email = this.email_input.read(cx).value().to_string();
-                        let password = this.password_input.read(cx).value().to_string();
-                        this.auth.login(&email, &password);
-                        cx.notify();
-                    })),
-            )
+    fn login_actions(&self, cx: &mut Context<Self>) -> impl gpui::IntoElement {
+        v_flex().gap_2().child(
+            Button::new("btn-login")
+                .label("Log In")
+                .primary()
+                .w_full()
+                .on_click(cx.listener(|this, _, window, cx| {
+                    let email = this.email_input.read(cx).value().to_string();
+                    let password = this.password_input.read(cx).value().to_string();
+                    this.auth.login(&email, &password);
+                    cx.notify();
+                })),
+        )
     }
 
     fn bypass_button(&self, cx: &mut Context<Self>) -> impl gpui::IntoElement {
