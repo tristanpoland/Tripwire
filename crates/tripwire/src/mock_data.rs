@@ -1,4 +1,7 @@
-use crate::models::{Channel, ChannelCategory, ChannelKind, Message, Server, User, UserStatus};
+use crate::models::{
+    Channel, ChannelCategory, ChannelKind, DirectMessageChannel, Message, Server, User,
+    UserStatus,
+};
 
 pub fn make_user(id: &str, name: &str, disc: &str, status: UserStatus) -> User {
     User {
@@ -24,6 +27,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Announcement,
                             unread: 1,
                             topic: Some("Official announcements only.".to_string()),
+                            members_connected: 0,
                         },
                         Channel {
                             id: "102".to_string(),
@@ -31,6 +35,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 0,
                             topic: Some("Read before participating.".to_string()),
+                            members_connected: 0,
                         },
                     ],
                     collapsed: false,
@@ -44,6 +49,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 5,
                             topic: Some("Chat about anything!".to_string()),
+                            members_connected: 0,
                         },
                         Channel {
                             id: "104".to_string(),
@@ -51,6 +57,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 0,
                             topic: Some("Introduce yourself to the community.".to_string()),
+                            members_connected: 0,
                         },
                         Channel {
                             id: "105".to_string(),
@@ -58,6 +65,15 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 12,
                             topic: None,
+                            members_connected: 0,
+                        },
+                        Channel {
+                            id: "108".to_string(),
+                            name: "media-sharing".to_string(),
+                            kind: ChannelKind::Media,
+                            unread: 2,
+                            topic: Some("Share your photos and videos".to_string()),
+                            members_connected: 0,
                         },
                     ],
                     collapsed: false,
@@ -71,6 +87,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Voice,
                             unread: 0,
                             topic: None,
+                            members_connected: 3,
                         },
                         Channel {
                             id: "107".to_string(),
@@ -78,6 +95,15 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Voice,
                             unread: 0,
                             topic: None,
+                            members_connected: 0,
+                        },
+                        Channel {
+                            id: "109".to_string(),
+                            name: "Town Hall".to_string(),
+                            kind: ChannelKind::Stage,
+                            unread: 0,
+                            topic: Some("Monthly community meetings".to_string()),
+                            members_connected: 0,
                         },
                     ],
                     collapsed: false,
@@ -105,6 +131,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 3,
                             topic: Some("Development discussion".to_string()),
+                            members_connected: 0,
                         },
                         Channel {
                             id: "202".to_string(),
@@ -112,6 +139,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 0,
                             topic: Some("Rustaceans unite!".to_string()),
+                            members_connected: 0,
                         },
                         Channel {
                             id: "203".to_string(),
@@ -119,6 +147,15 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 2,
                             topic: None,
+                            members_connected: 0,
+                        },
+                        Channel {
+                            id: "204".to_string(),
+                            name: "help-forum".to_string(),
+                            kind: ChannelKind::Forum,
+                            unread: 8,
+                            topic: Some("Ask questions and get help".to_string()),
+                            members_connected: 0,
                         },
                     ],
                     collapsed: false,
@@ -144,6 +181,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 0,
                             topic: Some("Share design inspiration".to_string()),
+                            members_connected: 0,
                         },
                         Channel {
                             id: "302".to_string(),
@@ -151,6 +189,7 @@ pub fn make_servers() -> Vec<Server> {
                             kind: ChannelKind::Text,
                             unread: 7,
                             topic: None,
+                            members_connected: 0,
                         },
                     ],
                     collapsed: false,
@@ -263,5 +302,77 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 edited: false,
             },
         ],
+    }
+}
+
+pub fn make_dm_channels() -> Vec<DirectMessageChannel> {
+    vec![
+        DirectMessageChannel {
+            id: "dm-bob".to_string(),
+            recipient: make_user("u2", "Bob", "0002", UserStatus::Idle),
+            last_message: Some("That sounds great! Let's do it.".to_string()),
+            last_message_time: Some("12:45 PM".to_string()),
+            unread: 2,
+        },
+        DirectMessageChannel {
+            id: "dm-carol".to_string(),
+            recipient: make_user("u3", "Carol", "0003", UserStatus::DoNotDisturb),
+            last_message: Some("Thanks for the help!".to_string()),
+            last_message_time: Some("Yesterday".to_string()),
+            unread: 0,
+        },
+        DirectMessageChannel {
+            id: "dm-dave".to_string(),
+            recipient: make_user("u4", "Dave", "0004", UserStatus::Offline),
+            last_message: Some("See you later!".to_string()),
+            last_message_time: Some("2 days ago".to_string()),
+            unread: 0,
+        },
+        DirectMessageChannel {
+            id: "dm-frank".to_string(),
+            recipient: make_user("u6", "Frank", "0006", UserStatus::Online),
+            last_message: Some("Check out this new library I found".to_string()),
+            last_message_time: Some("10:20 AM".to_string()),
+            unread: 5,
+        },
+    ]
+}
+
+pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
+    let current_user = make_user("u1", "Alice", "0001", UserStatus::Online);
+    
+    match dm_id {
+        "dm-bob" => {
+            let bob = make_user("u2", "Bob", "0002", UserStatus::Idle);
+            vec![
+                Message {
+                    id: "dm1".to_string(),
+                    author: current_user.clone(),
+                    content: "Hey Bob! Want to pair program later?".to_string(),
+                    timestamp: "Today at 12:30 PM".to_string(),
+                    edited: false,
+                },
+                Message {
+                    id: "dm2".to_string(),
+                    author: bob,
+                    content: "That sounds great! Let's do it.".to_string(),
+                    timestamp: "Today at 12:45 PM".to_string(),
+                    edited: false,
+                },
+            ]
+        }
+        "dm-frank" => {
+            let frank = make_user("u6", "Frank", "0006", UserStatus::Online);
+            vec![
+                Message {
+                    id: "dmf1".to_string(),
+                    author: frank,
+                    content: "Check out this new library I found".to_string(),
+                    timestamp: "Today at 10:20 AM".to_string(),
+                    edited: false,
+                },
+            ]
+        }
+        _ => vec![],
     }
 }

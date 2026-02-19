@@ -20,7 +20,7 @@ use gpui_component::{
 };
 
 use crate::app::TripwireApp;
-use crate::models::{ChannelCategory, ChannelKind};
+use crate::models::ChannelCategory;
 
 const PANEL_WIDTH: f32 = 240.;
 
@@ -103,6 +103,8 @@ impl TripwireApp {
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
         let active_id = self.active_channel_id.clone();
+        let cat_name = cat.name.clone();
+        let is_collapsed = cat.collapsed;
 
         v_flex()
             .w_full()
@@ -119,10 +121,19 @@ impl TripwireApp {
                     .items_center()
                     .gap_1()
                     .cursor_pointer()
+                    .hover(|s| s.bg(cx.theme().sidebar_accent))
+                    .rounded(cx.theme().radius)
+                    .on_click(cx.listener(move |this, _, _window, cx| {
+                        this.toggle_category(&cat_name, cx);
+                    }))
                     .child(
-                        Icon::new(IconName::ChevronDown)
-                            .xsmall()
-                            .text_color(cx.theme().sidebar_foreground),
+                        Icon::new(if is_collapsed {
+                            IconName::ChevronRight
+                        } else {
+                            IconName::ChevronDown
+                        })
+                        .xsmall()
+                        .text_color(cx.theme().sidebar_foreground),
                     )
                     .child(
                         div()
@@ -132,13 +143,15 @@ impl TripwireApp {
                             .child(cat.name.to_uppercase()),
                     ),
             )
-            // Channels in this category
-            .children(cat.channels.iter().map(|channel| {
+            // Channels in this category (hidden when collapsed)
+            .when(!is_collapsed, |this| {
+                this.children(cat.channels.iter().map(|channel| {
                 let ch_id = channel.id.clone();
                 let ch_name = channel.name.clone();
                 let is_active = active_id.as_deref() == Some(ch_id.as_str());
                 let has_unread = channel.unread > 0 && !is_active;
                 let kind = channel.kind.clone();
+                let members_connected = channel.members_connected;
 
                 div()
                     .id(ElementId::Name(SharedString::from(format!(
@@ -147,7 +160,7 @@ impl TripwireApp {
                     ))))
                     .mx_2()
                     .px_2()
-                    .py_1()
+                    .py(px(6.))
                     .rounded(cx.theme().radius)
                     .cursor_pointer()
                     .when(is_active, |this| this.bg(cx.theme().sidebar_accent))
@@ -159,24 +172,16 @@ impl TripwireApp {
                         h_flex()
                             .gap_2()
                             .items_center()
-                            // Channel kind icon
-                            .child(match kind {
-                                ChannelKind::Announcement => div()
-                                    .text_xs()
-                                    .text_color(cx.theme().muted_foreground)
-                                    .child("!")
-                                    .into_any_element(),
-                                ChannelKind::Voice => div()
-                                    .text_xs()
-                                    .text_color(cx.theme().muted_foreground)
-                                    .child("♪")
-                                    .into_any_element(),
-                                ChannelKind::Text => div()
-                                    .text_sm()
-                                    .text_color(cx.theme().muted_foreground)
-                                    .child("#")
-                                    .into_any_element(),
-                            })
+                            // Channel kind icon using proper IconName
+                            .child(
+                                Icon::new(kind.icon())
+                                    .xsmall()
+                                    .text_color(if is_active || has_unread {
+                                        cx.theme().sidebar_foreground
+                                    } else {
+                                        cx.theme().muted_foreground
+                                    }),
+                            )
                             // Channel name
                             .child(
                                 div()
@@ -196,13 +201,33 @@ impl TripwireApp {
                                     })
                                     .child(ch_name),
                             )
+                            // Voice channel member count
+                            .when(members_connected > 0 && kind.is_voice_based(), |this| {
+                                this.child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_1()
+                                        .child(
+                                            Icon::new(IconName::User)
+                                                .text_color(cx.theme().muted_foreground)
+                                                .xsmall(),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(cx.theme().muted_foreground)
+                                                .child(members_connected.to_string()),
+                                        ),
+                                )
+                            })
                             // Unread badge
                             .when(has_unread, |this| {
                                 this.child(
                                     div()
-                                        .min_w(px(16.))
-                                        .h(px(16.))
-                                        .px(px(4.))
+                                        .min_w(px(18.))
+                                        .h(px(18.))
+                                        .px(px(5.))
                                         .rounded_full()
                                         .bg(cx.theme().danger)
                                         .flex()
@@ -210,14 +235,16 @@ impl TripwireApp {
                                         .justify_center()
                                         .text_color(gpui::white())
                                         .text_xs()
+                                        .font_weight(gpui::FontWeight::BOLD)
                                         .child(channel.unread.to_string()),
                                 )
                             }),
                     )
-            }))
+                }))
+            })
     }
 
-    fn render_user_bar(&self, cx: &mut Context<Self>) -> impl gpui::IntoElement {
+    pub(crate) fn render_user_bar(&self, cx: &mut Context<Self>) -> impl gpui::IntoElement {
         let user = self.auth.current_user.clone();
 
         h_flex()

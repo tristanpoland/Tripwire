@@ -14,9 +14,10 @@ use gpui_component::{
     v_flex,
 };
 
-use crate::app::TripwireApp;
+use crate::app::{AppView, TripwireApp};
 
-const STRIP_WIDTH: f32 = 72.;
+const STRIP_WIDTH: f32 = 56.;
+const SERVER_ICON_SIZE: f32 = 48.;
 
 impl TripwireApp {
     pub(crate) fn render_server_list(&mut self, cx: &mut Context<Self>) -> AnyElement {
@@ -28,8 +29,8 @@ impl TripwireApp {
             .border_r_1()
             .border_color(cx.theme().sidebar_border)
             .items_center()
-            .pt_3()
-            .pb_3()
+            .pt_2()
+            .pb_2()
             .gap_2()
             .overflow_hidden()
             .child(self.server_home_button(cx))
@@ -37,7 +38,7 @@ impl TripwireApp {
                 div()
                     .w(px(32.))
                     .h(px(2.))
-                    .rounded_full()
+                    .rounded(px(2.))
                     .bg(cx.theme().border),
             )
             .children(
@@ -61,7 +62,7 @@ impl TripwireApp {
                             .items_center()
                             .justify_center()
                             .w_full()
-                            .py_1()
+                            .py(px(4.))
                             .cursor_pointer()
                             .on_click(cx.listener(move |this, _, window, cx| {
                                 this.switch_server(ix, window, cx);
@@ -74,10 +75,10 @@ impl TripwireApp {
                                     .w(px(4.))
                                     .rounded_r(px(4.))
                                     .bg(primary_color)
-                                    .when(is_active, |s| s.h(px(40.)))
+                                    .when(is_active, |s| s.h(px(36.)))
                                     .when(!is_active, |s| s.h(px(0.))),
                             )
-                            // Server avatar with tooltip
+                            // Server avatar with tooltip - SQUIRCLE SHAPE
                             .child(
                                 div()
                                     .id(ElementId::Name(SharedString::from(format!(
@@ -87,18 +88,34 @@ impl TripwireApp {
                                     .tooltip(move |window, cx| {
                                         Tooltip::new(name.clone()).build(window, cx)
                                     })
-                                    .child(Avatar::new().name(initials).with_size(
-                                        gpui_component::Size::Large,
-                                    ))
+                                    .child(
+                                        div()
+                                            .size(px(SERVER_ICON_SIZE))
+                                            .rounded(px(16.))
+                                            .bg(primary_color)
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .text_color(gpui::white())
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_base()
+                                            .when(!is_active, |this| {
+                                                this.rounded(px(16.))
+                                                    .hover(|s| s.rounded(px(12.)).bg(primary_color))
+                                            })
+                                            .when(is_active, |this| this.rounded(px(12.)))
+                                            .child(initials),
+                                    )
                                     // Unread badge
                                     .when(unread > 0 && !is_active, move |this| {
                                         this.child(
                                             div()
                                                 .absolute()
-                                                .bottom_0()
-                                                .right_0()
-                                                .w(px(16.))
-                                                .h(px(16.))
+                                                .bottom(px(-2.))
+                                                .right(px(-2.))
+                                                .min_w(px(18.))
+                                                .h(px(18.))
+                                                .px(px(4.))
                                                 .rounded_full()
                                                 .bg(danger_color)
                                                 .border_2()
@@ -108,6 +125,7 @@ impl TripwireApp {
                                                 .justify_center()
                                                 .text_color(gpui::white())
                                                 .text_xs()
+                                                .font_weight(gpui::FontWeight::BOLD)
                                                 .child(if unread > 9 {
                                                     "9+".to_string()
                                                 } else {
@@ -139,11 +157,38 @@ impl TripwireApp {
     }
 
     fn server_home_button(&self, cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        Button::new("btn-home")
-            .icon(IconName::Inbox)
-            .ghost()
-            .small()
-            .tooltip("Direct Messages")
-            .on_click(|_, _, _| {})
+        let is_dm_view = self.current_view == AppView::DirectMessages;
+        let primary_color = cx.theme().primary;
+        
+        div()
+            .id(ElementId::Name(SharedString::from("dm-home-button")))
+            .relative()
+            .flex()
+            .items_center()
+            .justify_center()
+            .cursor_pointer()
+            .tooltip(|window, cx| Tooltip::new("Direct Messages").build(window, cx))
+            .on_click(cx.listener(|this, _, _window, cx| {
+                this.switch_to_dms(cx);
+            }))
+            .child(
+                div()
+                    .size(px(SERVER_ICON_SIZE))
+                    .rounded(px(16.))
+                    .bg(cx.theme().accent)
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .when(!is_dm_view, |this| {
+                        this.rounded(px(16.))
+                            .hover(|s| s.rounded(px(12.)).bg(primary_color))
+                    })
+                    .when(is_dm_view, |this| this.rounded(px(12.)).bg(primary_color))
+                    .child(
+                        gpui_component::Icon::new(IconName::Inbox)
+                            .small()
+                            .text_color(gpui::white()),
+                    ),
+            )
     }
 }

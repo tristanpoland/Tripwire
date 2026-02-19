@@ -20,7 +20,7 @@ use gpui_component::{
     tooltip::Tooltip,
 };
 
-use crate::app::TripwireApp;
+use crate::app::{AppView, TripwireApp};
 use crate::models::Message;
 
 impl TripwireApp {
@@ -29,33 +29,73 @@ impl TripwireApp {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let channel_name = self.active_channel_name().unwrap_or("general").to_string();
-        let channel_topic = self
-            .active_channel_topic()
-            .map(|t| t.to_string());
-        let messages: Vec<Message> = self.active_messages().to_vec();
+        match self.current_view {
+            AppView::Servers => {
+                let channel_name = self.active_channel_name().unwrap_or("general").to_string();
+                let channel_topic = self.active_channel_topic().map(|t| t.to_string());
+                let messages: Vec<Message> = self.active_messages().to_vec();
+                let channel_kind = self.active_channel_kind();
+                let members_connected = self.active_channel().map(|c| c.members_connected).unwrap_or(0);
 
-        v_flex()
-            .flex_1()
-            .h_full()
-            .min_w_0()
-            .overflow_hidden()
-            .bg(cx.theme().background)
-            // ── Channel header ───────────────────────────────────────────────
-            .child(self.render_channel_header(&channel_name, channel_topic.as_deref(), cx))
-            // ── Message list ─────────────────────────────────────────────────
-            .child(self.render_message_list(&messages, cx))
-            // ── Message composer ─────────────────────────────────────────────
-            .child(self.render_message_composer(&channel_name, window, cx))
-            .into_any_element()
+                v_flex()
+                    .flex_1()
+                    .h_full()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .bg(cx.theme().background)
+                    .child(self.render_channel_header(
+                        &channel_name,
+                        channel_topic.as_deref(),
+                        channel_kind,
+                        members_connected,
+                        cx,
+                    ))
+                    .child(self.render_message_list(&messages, cx))
+                    .child(self.render_message_composer(&channel_name, window, cx))
+                    .into_any_element()
+            }
+            AppView::DirectMessages => {
+                let dm_name = self
+                    .active_dm_id
+                    .as_ref()
+                    .and_then(|id| {
+                        self.dm_channels
+                            .iter()
+                            .find(|dm| dm.id == *id)
+                            .map(|dm| dm.recipient.username.clone())
+                    })
+                    .unwrap_or_else(|| "Select a DM".to_string());
+                let messages: Vec<Message> = self.active_dm_messages().to_vec();
+
+                v_flex()
+                    .flex_1()
+                    .h_full()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .bg(cx.theme().background)
+                    .child(self.render_dm_header(&dm_name, cx))
+                    .child(self.render_message_list(&messages, cx))
+                    .child(self.render_message_composer(&dm_name, window, cx))
+                    .into_any_element()
+            }
+        }
     }
 
     fn render_channel_header(
         &self,
         channel_name: &str,
         topic: Option<&str>,
+        channel_kind: Option<crate::models::ChannelKind>,
+        members_connected: usize,
         cx: &mut Context<Self>,
     ) -> impl gpui::IntoElement {
+        use crate::models::ChannelKind;
+        
+        let show_voice_info = matches!(
+            channel_kind,
+            Some(ChannelKind::Voice) | Some(ChannelKind::Stage)
+        ) && members_connected > 0;
+
         h_flex()
             .h(px(48.))
             .flex_shrink_0()
@@ -65,28 +105,50 @@ impl TripwireApp {
             .border_b_1()
             .border_color(cx.theme().border)
             .bg(cx.theme().background)
-            // # icon + channel name
+            // Channel icon
+            .when_some(channel_kind.clone(), |this, kind| {
+                this.child(
+                    gpui_component::Icon::new(kind.icon())
+                        .small()
+                        .text_color(cx.theme().muted_foreground),
+                )
+            })
+            // Channel name
             .child(
                 div()
-                    .text_lg()
-                    .text_color(cx.theme().muted_foreground)
-                    .child("#"),
-            )
-            .child(
-                div()
-                    .text_sm()
+                    .text_base()
                     .font_semibold()
                     .text_color(cx.theme().foreground)
                     .child(channel_name.to_string()),
             )
-            // Divider
-            .when(topic.is_some(), |this| {
+            // Voice channel member count
+            .when(show_voice_info, |this| {
                 this.child(
                     div()
-                        .w(px(1.))
-                        .h(px(16.))
-                        .bg(cx.theme().border),
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .px_2()
+                        .py_1()
+                        .rounded(cx.theme().radius)
+                        .bg(cx.theme().accent)
+                        .child(
+                            gpui_component::Icon::new(IconName::User)
+                                .xsmall()
+                                .text_color(cx.theme().foreground),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_semibold()
+                                .text_color(cx.theme().foreground)
+                                .child(members_connected.to_string()),
+                        ),
                 )
+            })
+            // Divider
+            .when(topic.is_some(), |this| {
+                this.child(div().w(px(1.)).h(px(20.)).bg(cx.theme().border))
             })
             // Topic
             .when_some(topic, |this, t| {
@@ -120,6 +182,49 @@ impl TripwireApp {
                         this.show_members = !this.show_members;
                         cx.notify();
                     })),
+            )
+    }
+
+    fn render_dm_header(
+        &self,
+        recipient_name: &str,
+        cx: &mut Context<Self>,
+    ) -> impl gpui::IntoElement {
+        h_flex()
+            .h(px(48.))
+            .flex_shrink_0()
+            .px_4()
+            .gap_3()
+            .items_center()
+            .border_b_1()
+            .border_color(cx.theme().border)
+            .bg(cx.theme().background)
+            // @ symbol for DMs
+            .child(
+                div()
+                    .text_lg()
+                    .font_semibold()
+                    .text_color(cx.theme().muted_foreground)
+                    .child("@"),
+            )
+            // Recipient name
+            .child(
+                div()
+                    .text_base()
+                    .font_semibold()
+                    .text_color(cx.theme().foreground)
+                    .child(recipient_name.to_string()),
+            )
+            // Spacer
+            .child(div().flex_1())
+            // Toolbar buttons
+            .child(
+                Button::new("btn-search-dms")
+                    .icon(IconName::Search)
+                    .ghost()
+                    .xsmall()
+                    .tooltip("Search")
+                    .on_click(|_, _, _| {}),
             )
     }
 
@@ -157,24 +262,28 @@ impl TripwireApp {
         h_flex()
             .id(ElementId::Name(SharedString::from(format!("msg-{index}"))))
             .gap_3()
-            .py_1()
-            .px_2()
+            .py_2()
+            .px_3()
             .items_start()
             .rounded(cx.theme().radius)
             .hover(|s| s.bg(cx.theme().accent))
             // Avatar
             .child(
-                Avatar::new()
-                    .name(avatar_name)
-                    .with_size(gpui_component::Size::Medium),
+                div()
+                    .flex_shrink_0()
+                    .child(
+                        Avatar::new()
+                            .name(avatar_name)
+                            .with_size(gpui_component::Size::Medium),
+                    ),
             )
             // Content block
             .child(
                 v_flex()
                     .flex_1()
                     .min_w_0()
-                    .gap_0()
-                    // Author + timestamp
+                    .gap_1()
+                    // Author + timestamp row
                     .child(
                         h_flex()
                             .gap_2()
@@ -182,7 +291,7 @@ impl TripwireApp {
                             .child(
                                 div()
                                     .text_sm()
-                                    .font_semibold()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
                                     .text_color(cx.theme().foreground)
                                     .child(author_name),
                             )
@@ -197,6 +306,7 @@ impl TripwireApp {
                                     div()
                                         .text_xs()
                                         .text_color(cx.theme().muted_foreground)
+                                        .italic()
                                         .child("(edited)"),
                                 )
                             }),
@@ -220,46 +330,53 @@ impl TripwireApp {
         let _ = channel_name;
         h_flex()
             .flex_shrink_0()
-            .mx_4()
-            .mb_4()
             .px_4()
-            .py_2()
+            .pb_4()
+            .pt_2()
             .gap_2()
             .items_center()
-            .rounded(cx.theme().radius_lg)
-            .bg(cx.theme().popover)
-            .border_1()
-            .border_color(cx.theme().border)
-            // Attachment button (placeholder)
-            .child(
-                Button::new("btn-attach")
-                    .icon(IconName::Plus)
-                    .ghost()
-                    .xsmall()
-                    .tooltip("Attach File")
-                    .on_click(|_, _, _| {}),
-            )
-            // Text input — fills remaining space
             .child(
                 div()
                     .flex_1()
-                    .child(Input::new(&self.message_input).appearance(false)),
+                    .px_3()
+                    .py_3()
+                    .gap_2()
+                    .rounded(cx.theme().radius_lg)
+                    .bg(cx.theme().popover)
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .child(
+                        h_flex()
+                            .gap_2()
+                            .items_center()
+                            // Attachment button
+                            .child(
+                                Button::new("btn-attach")
+                                    .icon(IconName::Plus)
+                                    .ghost()
+                                    .xsmall()
+                                    .tooltip("Attach File")
+                                    .on_click(|_, _, _| {}),
+                            )
+                            // Text input
+                            .child(div().flex_1().child(Input::new(&self.message_input).appearance(false)))
+                            // Emoji button
+                            .child(
+                                Button::new("btn-emoji")
+                                    .icon(IconName::Star)
+                                    .ghost()
+                                    .xsmall()
+                                    .tooltip("Emoji")
+                                    .on_click(|_, _, _| {}),
+                            ),
+                    ),
             )
-            // Emoji placeholder
-            .child(
-                Button::new("btn-emoji")
-                    .icon(IconName::Star)
-                    .ghost()
-                    .xsmall()
-                    .tooltip("Emoji")
-                    .on_click(|_, _, _| {}),
-            )
-            // Send button
+            // Send button (outside input box)
             .child(
                 Button::new("btn-send")
                     .icon(IconName::ArrowRight)
                     .primary()
-                    .xsmall()
+                    .small()
                     .tooltip("Send Message")
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.send_message(window, cx);

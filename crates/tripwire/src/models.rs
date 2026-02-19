@@ -1,3 +1,4 @@
+use gpui_component::IconName;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -55,15 +56,47 @@ pub enum ChannelKind {
     Text,
     Voice,
     Announcement,
+    Stage,
+    Forum,
+    Media,
 }
 
 impl ChannelKind {
     pub fn prefix(&self) -> &'static str {
         match self {
             ChannelKind::Text => "#",
-            ChannelKind::Voice => "♪",
-            ChannelKind::Announcement => "!",
+            ChannelKind::Voice => "🔊",
+            ChannelKind::Announcement => "📢",
+            ChannelKind::Stage => "🎙️",
+            ChannelKind::Forum => "💬",
+            ChannelKind::Media => "📁",
         }
+    }
+
+    pub fn icon(&self) -> IconName {
+        match self {
+            ChannelKind::Text => IconName::File,
+            ChannelKind::Voice => IconName::Inbox,
+            ChannelKind::Announcement => IconName::Bell,
+            ChannelKind::Stage => IconName::LayoutDashboard,
+            ChannelKind::Forum => IconName::BookOpen,
+            ChannelKind::Media => IconName::FolderOpen,
+        }
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            ChannelKind::Text => "Text channel for messaging",
+            ChannelKind::Voice => "Voice channel for audio conversations",
+            ChannelKind::Announcement => "Announcement channel for important updates",
+            ChannelKind::Stage => "Stage channel for large audio events",
+            ChannelKind::Forum => "Forum channel for topic-based discussions",
+            ChannelKind::Media => "Media channel for sharing files and images",
+        }
+    }
+
+    pub fn is_voice_based(&self) -> bool {
+        matches!(self, ChannelKind::Voice | ChannelKind::Stage)
     }
 }
 
@@ -74,6 +107,13 @@ pub struct Channel {
     pub kind: ChannelKind,
     pub unread: usize,
     pub topic: Option<String>,
+    pub members_connected: usize,
+}
+
+impl Channel {
+    pub fn is_voice_based(&self) -> bool {
+        matches!(self.kind, ChannelKind::Voice | ChannelKind::Stage)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -114,4 +154,19 @@ pub struct Message {
     pub content: String,
     pub timestamp: String,
     pub edited: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct DirectMessageChannel {
+    pub id: String,
+    pub recipient: User,
+    pub last_message: Option<String>,
+    pub last_message_time: Option<String>,
+    pub unread: usize,
+}
+
+impl DirectMessageChannel {
+    pub fn display_name(&self) -> String {
+        self.recipient.username.clone()
+    }
 }

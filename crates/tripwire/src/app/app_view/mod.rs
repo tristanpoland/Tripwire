@@ -5,6 +5,7 @@
 
 pub mod channel_list;
 pub mod chat_area;
+pub mod dm_list;
 pub mod members_panel;
 pub mod server_list;
 
@@ -13,7 +14,7 @@ use gpui::prelude::FluentBuilder;
 use gpui::ParentElement;
 use gpui::Styled;
 use gpui_component::{ActiveTheme as _, h_flex};
-use crate::app::TripwireApp;
+use crate::app::{AppView, TripwireApp};
 
 impl TripwireApp {
     /// Top-level Discord-style layout:
@@ -23,8 +24,8 @@ impl TripwireApp {
     /// │      │            │  Channel Header           │                │
     /// │  S   │  Channel   │───────────────────────────│  Members List  │
     /// │  e   │  List      │  Messages (scrollable)    │                │
-    /// │  r   │            │                           │                │
-    /// │  v   │            │───────────────────────────│                │
+    /// │  r   │   OR       │                           │                │
+    /// │  v   │  DM List   │───────────────────────────│                │
     /// │  e   │            │  Message Input            │                │
     /// │  r   ├────────────┴───────────────────────────┴────────────────┤
     /// │  s   │                 User Bar                                │
@@ -37,12 +38,15 @@ impl TripwireApp {
             .bg(cx.theme().background)
             // Left strip: server icon list
             .child(self.render_server_list(cx))
-            // Channel panel
-            .child(self.render_channel_list(window, cx))
+            // Channel/DM panel based on current view
+            .child(match self.current_view {
+                AppView::Servers => self.render_channel_list(window, cx),
+                AppView::DirectMessages => self.render_dm_list(window, cx),
+            })
             // Main content: header + messages + input
             .child(self.render_chat_area(window, cx))
-            // Right panel: members list
-            .when(self.show_members, |this| {
+            // Right panel: members list (only show for servers, not DMs)
+            .when(self.show_members && self.current_view == AppView::Servers, |this| {
                 this.child(self.render_members_panel(cx))
             })
             .into_any_element()
