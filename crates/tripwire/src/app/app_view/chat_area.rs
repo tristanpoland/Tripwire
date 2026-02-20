@@ -72,6 +72,57 @@ impl TripwireApp {
                             .child(self.render_stage_channel_ui(&channel_name, members_connected, window, cx))
                             .into_any_element()
                     }
+                    Some(crate::models::ChannelKind::Media) => {
+                        v_flex()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().background)
+                            .child(self.render_channel_header(
+                                &channel_name,
+                                channel_topic.as_deref(),
+                                channel_kind,
+                                members_connected,
+                                cx,
+                            ))
+                            .child(self.render_gallery_channel_ui(&channel_name, &messages, window, cx))
+                            .into_any_element()
+                    }
+                    Some(crate::models::ChannelKind::Forum) => {
+                        v_flex()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().background)
+                            .child(self.render_channel_header(
+                                &channel_name,
+                                channel_topic.as_deref(),
+                                channel_kind,
+                                members_connected,
+                                cx,
+                            ))
+                            .child(self.render_forum_channel_ui(&channel_name, &messages, window, cx))
+                            .into_any_element()
+                    }
+                    Some(crate::models::ChannelKind::Announcement) => {
+                        v_flex()
+                            .flex_1()
+                            .h_full()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .bg(cx.theme().background)
+                            .child(self.render_channel_header(
+                                &channel_name,
+                                channel_topic.as_deref(),
+                                channel_kind,
+                                members_connected,
+                                cx,
+                            ))
+                            .child(self.render_announcement_channel_ui(&channel_name, &messages, window, cx))
+                            .into_any_element()
+                    }
                     _ => {
                         // Regular text channel
                         v_flex()

@@ -14,6 +14,9 @@ pub mod server_settings;
 pub mod voice_channel;
 pub mod stage_channel;
 pub mod voice_controls_bar;
+pub mod gallery_channel;
+pub mod forum_channel;
+pub mod announcement_channel;
 
 use gpui::{AnyElement, Context, IntoElement as _, Window, div, InteractiveElement};
 use gpui::prelude::FluentBuilder;
