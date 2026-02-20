@@ -21,6 +21,12 @@ impl TripwireApp {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
+        // Voice chat sidebar mode takes priority
+        if self.show_voice_chat_sidebar && self.is_in_voice() {
+            return self.render_voice_chat_sidebar(window, cx);
+        }
+        
+        // Regular thread mode
         let thread_id = self.open_thread_id.as_ref()?;
         
         // Get the parent message
@@ -84,97 +90,103 @@ impl TripwireApp {
                     // Thread content
                     v_flex()
                         .flex_1()
-                        .overflow_y_scrollbar()
+                        .min_h_0()
+                        .overflow_hidden()
                         .child(
-                            v_flex()
-                                .gap_2()
-                                .p_4()
-                                // Original message
+                            div()
+                                .flex_1()
+                                .overflow_y_scrollbar()
                                 .child(
                                     v_flex()
-                                        .gap_1()
+                                        .gap_2()
                                         .p_4()
-                                        .rounded(cx.theme().radius)
-                                        .bg(cx.theme().sidebar)
-                                        .border_1()
-                                        .border_color(cx.theme().border)
+                                        // Original message
                                         .child(
-                                            h_flex()
-                                                .gap_3()
-                                                .items_start()
+                                            v_flex()
+                                                .gap_1()
+                                                .p_4()
+                                                .rounded(cx.theme().radius)
+                                                .bg(cx.theme().sidebar)
+                                                .border_1()
+                                                .border_color(cx.theme().border)
                                                 .child(
-                                                    div()
-                                                        .flex_shrink_0()
+                                                    h_flex()
+                                                        .gap_3()
+                                                        .items_start()
                                                         .child(
-                                                            Avatar::new()
-                                                                .name(parent_message.author.username.clone())
-                                                                .with_size(gpui_component::Size::Medium)
+                                                            div()
+                                                                .flex_shrink_0()
+                                                                .child(
+                                                                    Avatar::new()
+                                                                        .name(parent_message.author.username.clone())
+                                                                        .with_size(gpui_component::Size::Medium)
+                                                                )
                                                         )
-                                                )
-                                                .child(
-                                                    v_flex()
-                                                        .flex_1()
-                                                        .gap_1()
                                                         .child(
-                                                            h_flex()
-                                                                .gap_2()
-                                                                .items_baseline()
+                                                            v_flex()
+                                                                .flex_1()
+                                                                .gap_1()
+                                                                .child(
+                                                                    h_flex()
+                                                                        .gap_2()
+                                                                        .items_baseline()
+                                                                        .child(
+                                                                            div()
+                                                                                .text_sm()
+                                                                                .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                                                .text_color(cx.theme().foreground)
+                                                                                .child(parent_message.author.username.clone())
+                                                                        )
+                                                                        .child(
+                                                                            div()
+                                                                                .text_xs()
+                                                                                .text_color(cx.theme().muted_foreground)
+                                                                                .child(parent_message.timestamp.clone())
+                                                                        )
+                                                                )
                                                                 .child(
                                                                     div()
                                                                         .text_sm()
-                                                                        .font_weight(gpui::FontWeight::SEMIBOLD)
                                                                         .text_color(cx.theme().foreground)
-                                                                        .child(parent_message.author.username.clone())
+                                                                        .child(parent_message.content.clone())
                                                                 )
-                                                                .child(
-                                                                    div()
-                                                                        .text_xs()
-                                                                        .text_color(cx.theme().muted_foreground)
-                                                                        .child(parent_message.timestamp.clone())
-                                                                )
-                                                        )
-                                                        .child(
-                                                            div()
-                                                                .text_sm()
-                                                                .text_color(cx.theme().foreground)
-                                                                .child(parent_message.content.clone())
                                                         )
                                                 )
                                         )
+                                        // Thread replies divider
+                                        .child(
+                                            h_flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .py_2()
+                                                .child(
+                                                    div()
+                                                        .h(px(1.0))
+                                                        .flex_1()
+                                                        .bg(cx.theme().border)
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_xs()
+                                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                        .text_color(cx.theme().muted_foreground)
+                                                        .child(format!("{} {}", 
+                                                            thread_messages.len(),
+                                                            if thread_messages.len() == 1 { "Reply" } else { "Replies" }
+                                                        ))
+                                                )
+                                                .child(
+                                                    div()
+                                                        .h(px(1.0))
+                                                        .flex_1()
+                                                        .bg(cx.theme().border)
+                                                )
+                                        )
+                                        // Thread messages
+                                        .children(thread_messages.iter().enumerate().map(|(idx, msg)| {
+                                            self.render_thread_message(msg, idx, window, cx)
+                                        }))
                                 )
-                                // Thread replies divider
-                                .child(
-                                    h_flex()
-                                        .items_center()
-                                        .gap_2()
-                                        .py_2()
-                                        .child(
-                                            div()
-                                                .h(px(1.0))
-                                                .flex_1()
-                                                .bg(cx.theme().border)
-                                        )
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                .text_color(cx.theme().muted_foreground)
-                                                .child(format!("{} {}", 
-                                                    thread_messages.len(),
-                                                    if thread_messages.len() == 1 { "Reply" } else { "Replies" }
-                                                ))
-                                        )
-                                        .child(
-                                            div()
-                                                .h(px(1.0))
-                                                .flex_1()
-                                                .bg(cx.theme().border)
-                                        )
-                                )
-                                // Thread messages
-                                .children(thread_messages.iter().enumerate().map(|(idx, msg)| {
-                                    self.render_thread_message(msg, idx, window, cx)
-                                }))
                         )
                 )
                 .child(
@@ -183,6 +195,109 @@ impl TripwireApp {
                 )
                 .into_any_element()
         )
+    }
+    
+    fn render_voice_chat_sidebar(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        // Get messages for the active voice channel
+        let messages = self.active_channel_id.as_ref()
+            .and_then(|id| self.messages.get(id))
+            .map(|msgs| msgs.clone())
+            .unwrap_or_default();
+        
+        Some(
+            v_flex()
+                .w(px(420.0))
+                .h_full()
+                .bg(cx.theme().background)
+                .border_l_1()
+                .border_color(cx.theme().border)
+                .child(
+                    // Header
+                    h_flex()
+                        .flex_shrink_0()
+                        .h(px(48.0))
+                        .px_4()
+                        .items_center()
+                        .justify_between()
+                        .border_b_1()
+                        .border_color(cx.theme().border)
+                        .child(
+                            div()
+                                .text_lg()
+                                .font_weight(gpui::FontWeight::SEMIBOLD)
+                                .text_color(cx.theme().foreground)
+                                .child("Voice Chat")
+                        )
+                        .child(
+                            Button::new("btn-close-voice-chat")
+                                .icon(IconName::Close)
+                                .ghost()
+                                .xsmall()
+                                .tooltip("Close voice chat")
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.close_voice_chat_sidebar(cx);
+                                }))
+                        )
+                )
+                .child(
+                    // Messages
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_hidden()
+                        .child(
+                            div()
+                                .flex_1()
+                                .overflow_y_scrollbar()
+                                .child(
+                                    v_flex()
+                                        .gap_1()
+                                        .p_3()
+                                        .children(messages.iter().enumerate().map(|(idx, msg)| {
+                                            self.render_thread_message(msg, idx, window, cx)
+                                        }))
+                                )
+                        )
+                )
+                .child(
+                    // Voice chat input
+                    self.render_voice_chat_composer(window, cx)
+                )
+                .into_any_element()
+        )
+    }
+    
+    fn render_voice_chat_composer(
+        &self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        v_flex()
+            .flex_shrink_0()
+            .p_4()
+            .border_t_1()
+            .border_color(cx.theme().border)
+            .child(
+                v_flex()
+                    .gap_2()
+                    .child(
+                        div()
+                            .px_3()
+                            .py_3()
+                            .rounded(cx.theme().radius)
+                            .bg(cx.theme().muted)
+                            .border_1()
+                            .border_color(cx.theme().border)
+                            .child(
+                                Input::new(&self.voice_chat_input).appearance(false)
+                            )
+                    )
+            )
+            .into_any_element()
     }
     
     fn render_thread_message(
@@ -261,7 +376,7 @@ impl TripwireApp {
                             .border_1()
                             .border_color(cx.theme().border)
                             .child(
-                                Input::new(&self.message_input).appearance(false)
+                                Input::new(&self.thread_input).appearance(false)
                             )
                     )
                     .child(
@@ -299,13 +414,29 @@ impl TripwireApp {
         cx.notify();
     }
     
+    pub(crate) fn close_voice_chat_sidebar(&mut self, cx: &mut Context<Self>) {
+        self.show_voice_chat_sidebar = false;
+        cx.notify();
+    }
+    
+    pub(crate) fn open_voice_chat_sidebar(&mut self, cx: &mut Context<Self>) {
+        // Close any open thread first
+        self.open_thread_id = None;
+        self.show_voice_chat_sidebar = true;
+        cx.notify();
+    }
+    
+    pub(crate) fn is_in_voice(&self) -> bool {
+        self.voice_state.is_some()
+    }
+    
     pub(crate) fn send_thread_reply(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let thread_id = match &self.open_thread_id {
             Some(id) => id.clone(),
             None => return,
         };
         
-        let content = self.message_input.read(cx).text().to_string();
+        let content = self.thread_input.read(cx).text().to_string();
         if content.trim().is_empty() {
             return;
         }
@@ -344,7 +475,7 @@ impl TripwireApp {
         }
         
         // Clear input
-        self.message_input.update(cx, |input, cx| {
+        self.thread_input.update(cx, |input, cx| {
             input.set_value("", window, cx);
         });
         

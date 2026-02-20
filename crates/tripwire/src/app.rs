@@ -45,7 +45,7 @@ pub struct TripwireApp {
     pub(crate) message_input: Entity<InputState>,
     pub(crate) show_members: bool,
     pub(crate) pending_attachment: Option<Attachment>,
-    pub(crate) emoji_search: String,
+    pub(crate) emoji_search_input: Entity<InputState>,
     pub(crate) active_emoji_picker_message: Option<String>,
     
     // ── Reply state ─────────────────────────────────────────────────────────
@@ -54,6 +54,11 @@ pub struct TripwireApp {
     // ── Thread state ────────────────────────────────────────────────────────
     pub(crate) open_thread_id: Option<String>, // The message ID that is the thread parent
     pub(crate) thread_messages: HashMap<String, Vec<Message>>, // thread_id -> messages
+    pub(crate) thread_input: Entity<InputState>, // Separate input for thread sidebar
+    pub(crate) show_voice_chat_sidebar: bool, // Whether to show voice chat in sidebar instead
+    
+    // ── Voice chat state ────────────────────────────────────────────────────
+    pub(crate) voice_chat_input: Entity<InputState>, // Separate input for voice chat
     
     // ── Edit state ──────────────────────────────────────────────────────────
     pub(crate) editing_message_id: Option<String>,
@@ -108,6 +113,12 @@ impl TripwireApp {
 
         let message_input =
             cx.new(|cx| InputState::new(window, cx).placeholder("Send a message..."));
+        let thread_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder("Reply to thread..."));
+        let voice_chat_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder("Chat in voice..."));
+        let emoji_search_input =
+            cx.new(|cx| InputState::new(window, cx).placeholder("Search emojis..."));
 
         // Subscribe message input to catch Enter key to send
         let msg_sub = cx.subscribe(
@@ -138,11 +149,14 @@ impl TripwireApp {
             message_input,
             show_members: true,
             pending_attachment: None,
-            emoji_search: String::new(),
+            emoji_search_input,
             active_emoji_picker_message: None,
             replying_to: None,
             open_thread_id: None,
             thread_messages: HashMap::new(),
+            thread_input,
+            show_voice_chat_sidebar: false,
+            voice_chat_input,
             editing_message_id: None,
             typing_users: HashMap::new(),
             voice_state: None,

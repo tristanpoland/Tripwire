@@ -254,6 +254,22 @@ impl TripwireApp {
             // Spacer
             .child(div().flex_1())
             // Toolbar buttons
+            .when(show_voice_info && self.is_in_voice(), |this| {
+                this.child(
+                    Button::new("btn-toggle-voice-chat")
+                        .icon(IconName::User)
+                        .ghost()
+                        .xsmall()
+                        .tooltip("Toggle Voice Chat")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if this.show_voice_chat_sidebar {
+                                this.close_voice_chat_sidebar(cx);
+                            } else {
+                                this.open_voice_chat_sidebar(cx);
+                            }
+                        }))
+                )
+            })
             .child(
                 Button::new("btn-search-msgs")
                     .icon(IconName::Search)
@@ -329,12 +345,23 @@ impl TripwireApp {
             message_elements.push(self.render_message(ix, msg, cx).into_any_element());
         }
 
+        // TODO: Add auto-scroll to bottom behavior
+        // Need to track if user has manually scrolled up
+        // If not scrolled up, scroll to bottom when new messages arrive
+        // GPUI's scrollbar component would need scroll position tracking
+
         div()
             .flex_1()
-            .overflow_y_scrollbar()
-            .px_4()
-            .py_4()
-            .children(message_elements)
+            .min_h_0()
+            .overflow_hidden()
+            .child(
+                div()
+                    .h_full()
+                    .overflow_y_scrollbar()
+                    .px_4()
+                    .py_4()
+                    .children(message_elements)
+            )
     }
 
     fn render_message(
@@ -587,12 +614,14 @@ impl TripwireApp {
                     )
             )
             // Hover toolbar (Discord-style) - positioned at top-right of message
+            // The toolbar is part of the hover group, so hovering over it keeps it visible
             .child(
                 div()
                     .absolute()
                     .top(px(-8.0))
                     .right(px(16.0))
-                    .occlude()
+                    .invisible()
+                    .group_hover("message-hover", |s| s.visible())
                     .child(
                         div()
                             .flex()
@@ -839,74 +868,236 @@ impl TripwireApp {
         app_entity: gpui::Entity<TripwireApp>,
         cx: &mut Context<gpui_component::popover::PopoverState>,
     ) -> gpui::AnyElement {
-        let emojis = vec![
-            vec!["😀", "😃", "😄", "😁", "😅", "😂", "🤣", "😊"],
-            vec!["😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘"],
-            vec!["😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪"],
-            vec!["🤨", "🧐", "🤓", "😎", "🥳", "😏", "😒", "😞"],
-            vec!["😔", "😟", "😕", "🙁", "😣", "😖", "😫", "😩"],
-            vec!["🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯"],
-            vec!["😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓"],
-            vec!["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍"],
-            vec!["💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘"],
-            vec!["👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙"],
-            vec!["👈", "👉", "👆", "👇", "☝️", "✋", "🤚", "🖐️"],
-            vec!["👋", "🤝", "🙏", "✍️", "💪", "👏", "🙌", "👐"],
-            vec!["🎉", "🎊", "🎈", "🎁", "🏆", "🥇", "🥈", "🥉"],
-            vec!["⚡", "✨", "💫", "⭐", "🌟", "💥", "🔥", "🌈"],
-            vec!["✅", "❌", "⚠️", "❗", "❓", "💯", "🆒", "🆕"],
+        use gpui_component::input::Input;
+        
+        // Emoji list with searchable names
+        let emoji_list: Vec<(&str, &str)> = vec![
+            // Smileys & Emotion
+            ("😀", "grinning smile happy joy"),
+            ("😃", "grin smile happy smiley"),
+            ("😄", "laugh smile happy joy grin"),
+            ("😁", "beaming smile grin happy"),
+            ("😅", "sweat grin smile relief"),
+            ("😂", "joy laugh tears crying happy lol"),
+            ("🤣", "rofl rolling floor laughing"),
+            ("😊", "blush smile happy pleased"),
+            ("😇", "innocent angel halo smile"),
+            ("🙂", "smile slight happy"),
+            ("🙃", "upside down smile sarcasm"),
+            ("😉", "wink flirt smile"),
+            ("😌", "relieved content peaceful"),
+            ("😍", "heart eyes love adore"),
+            ("🥰", "smiling hearts love adore"),
+            ("😘", "kiss love blow kiss"),
+            ("😗", "kissing pucker lips"),
+            ("😙", "kissing smile"),
+            ("😚", "kissing closed eyes"),
+            ("😋", "yum delicious tasty savoring"),
+            ("😛", "tongue out playful"),
+            ("😝", "squinting tongue wink"),
+            ("😜", "winking tongue playful"),
+            ("🤪", "zany crazy wacky goofy"),
+            ("🤨", "raised eyebrow skeptical suspicious"),
+            ("🧐", "monocle thinking curious"),
+            ("🤓", "nerd geek glasses"),
+            ("😎", "sunglasses cool awesome"),
+            ("🥳", "party celebrate partying"),
+            ("😏", "smirk smug confident"),
+            ("😒", "unamused annoyed bored"),
+            ("😞", "disappointed sad unhappy"),
+            ("😔", "pensive sad thoughtful"),
+            ("😟", "worried concerned anxious"),
+            ("😕", "confused puzzled uncertain"),
+            ("🙁", "frown sad unhappy"),
+            ("😣", "persevere struggle helpless"),
+            ("😖", "confounded frustrated upset"),
+            ("😫", "tired exhausted weary"),
+            ("😩", "weary tired exhausted fed up"),
+            ("🥺", "pleading puppy eyes"),
+            ("😢", "cry tears sad"),
+            ("😭", "sob crying tears bawl"),
+            ("😤", "triumph victory smug proud"),
+            ("😠", "angry mad annoyed"),
+            ("😡", "rage furious mad angry"),
+            ("🤬", "cursing swearing symbols"),
+            ("🤯", "exploding head mind blown shocked"),
+            ("😳", "flushed surprised embarrassed"),
+            ("🥵", "hot heat sweat"),
+            ("🥶", "cold freezing frozen"),
+            ("😱", "scream fear shocked afraid"),
+            ("😨", "fearful scared afraid"),
+            ("😰", "anxious nervous worried sweat"),
+            ("😥", "sad sweat disappointed"),
+            ("😓", "downcast sweat sad"),
+            // Hearts
+            ("❤️", "red heart love"),
+            ("🧡", "orange heart love"),
+            ("💛", "yellow heart love"),
+            ("💚", "green heart love"),
+            ("💙", "blue heart love"),
+            ("💜", "purple heart love"),
+            ("🖤", "black heart love"),
+            ("🤍", "white heart love"),
+            ("💔", "broken heart heartbreak sad"),
+            ("❣️", "heart exclamation love emphasis"),
+            ("💕", "two hearts love"),
+            ("💞", "revolving hearts love"),
+            ("💓", "beating heart love pulse"),
+            ("💗", "growing heart love"),
+            ("💖", "sparkling heart love shine"),
+            ("💘", "heart arrow cupid love"),
+            // Hands
+            ("👍", "thumbs up like yes agree good"),
+            ("👎", "thumbs down dislike no disagree bad"),
+            ("👌", "ok okay perfect good"),
+            ("✌️", "victory peace two fingers"),
+            ("🤞", "crossed fingers hope luck wish"),
+            ("🤟", "love you gesture"),
+            ("🤘", "rock on horns metal"),
+            ("🤙", "call me hang loose shaka"),
+            ("👈", "left point backhand"),
+            ("👉", "right point backhand"),
+            ("👆", "up point backhand"),
+            ("👇", "down point backhand"),
+            ("☝️", "index pointing up one"),
+            ("✋", "raised hand stop"),
+            ("🤚", "raised back hand"),
+            ("🖐️", "hand fingers splayed five"),
+            ("👋", "wave hello goodbye hi bye"),
+            ("🤝", "handshake deal agreement shake"),
+            ("🙏", "pray please thanks folded hands"),
+            ("✍️", "writing hand write"),
+            ("💪", "muscle strong flex bicep"),
+            ("👏", "clap applause clapping"),
+            ("🙌", "raised hands celebration hooray yay"),
+            ("👐", "open hands"),
+            // Celebration
+            ("🎉", "party popper celebrate confetti"),
+            ("🎊", "confetti ball celebrate party"),
+            ("🎈", "balloon party celebrate"),
+            ("🎁", "gift present box wrapped"),
+            ("🏆", "trophy win winner champion award"),
+            ("🥇", "first place gold medal winner"),
+            ("🥈", "second place silver medal"),
+            ("🥉", "third place bronze medal"),
+            // Symbols
+            ("⚡", "lightning bolt zap electric power fast"),
+            ("✨", "sparkles stars shine magic"),
+            ("💫", "dizzy stars shine"),
+            ("⭐", "star favorite"),
+            ("🌟", "glowing star shine bright"),
+            ("💥", "collision boom bang explosion"),
+            ("🔥", "fire flame hot lit"),
+            ("🌈", "rainbow pride colorful"),
+            ("✅", "check mark done complete yes correct green"),
+            ("❌", "cross mark x no wrong red"),
+            ("⚠️", "warning caution alert"),
+            ("❗", "exclamation mark red important"),
+            ("❓", "question mark ask help"),
+            ("💯", "hundred points full perfect 100"),
+            ("🆒", "cool button word"),
+            ("🆕", "new button word"),
         ];
 
-        div()
-            .p_2()
-            .w(gpui::px(280.0))
-            .max_h(gpui::px(320.0))
-            .overflow_y_scrollbar()
+        let search_query = app_entity.read(cx).emoji_search_input.read(cx).value().to_lowercase();
+        
+        // Filter emojis based on search
+        let filtered_emojis: Vec<&str> = if search_query.is_empty() {
+            emoji_list.iter().map(|(emoji, _)| *emoji).collect()
+        } else {
+            emoji_list
+                .iter()
+                .filter(|(_, keywords)| keywords.to_lowercase().contains(&search_query))
+                .map(|(emoji, _)| *emoji)
+                .collect()
+        };
+
+        // Group into rows of 8
+        let emoji_rows: Vec<Vec<&str>> = filtered_emojis
+            .chunks(8)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        v_flex()
+            .w(gpui::px(320.0))
+            .h(gpui::px(360.0))
             .child(
-                v_flex()
-                    .gap_1()
-                    .children(
-                        emojis.iter().map(|row| {
-                            h_flex()
-                                .gap_1()
-                                .children(
-                                    row.iter().map(|emoji| {
-                                        let emoji_str = emoji.to_string();
-                                        let msg_id = message_id.clone();
-                                        let app = app_entity.clone();
-                                        let emoji_for_closure = emoji_str.clone();
-                                        
-                                        div()
-                                            .p_2()
-                                            .rounded(cx.theme().radius)
-                                            .hover(|s| s.bg(cx.theme().accent).cursor_pointer())
-                                            .on_mouse_down(
-                                                gpui::MouseButton::Left,
-                                                cx.listener(move |_state, _, window, cx| {
-                                                    // Toggle the reaction on the app
-                                                    let app = app.clone();
-                                                    let msg_id = msg_id.clone();
-                                                    let emoji_str = emoji_for_closure.clone();
-                                                    
-                                                    // Defer the update to avoid context lifetime issues
-                                                    cx.defer(move |cx| {
-                                                        _ = app.update(cx, |app, cx| {
-                                                            app.toggle_reaction(msg_id, emoji_str, cx);
-                                                        });
-                                                    });
-                                                    
-                                                    // Dismiss the popover
-                                                    cx.emit(gpui::DismissEvent);
-                                                }),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_lg()
-                                                    .child(emoji_str)
-                                            )
+                // Search input header (fixed)
+                div()
+                    .flex_shrink_0()
+                    .p_2()
+                    .border_b_1()
+                    .border_color(cx.theme().border)
+                    .child(
+                        Input::new(&app_entity.read(cx).emoji_search_input)
+                            .appearance(false)
+                    )
+            )
+            .child(
+                // Emoji grid (scrollable)
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .h_full()
+                            .overflow_y_scrollbar()
+                            .p_2()
+                            .child(
+                                v_flex()
+                                    .gap_1()
+                                    .when(emoji_rows.is_empty(), |this| {
+                                        this.child(
+                                            div()
+                                                .p_4()
+                                                .text_center()
+                                                .text_sm()
+                                                .text_color(cx.theme().muted_foreground)
+                                                .child("No emojis found")
+                                        )
                                     })
-                                )
-                        })
+                                    .children(
+                                        emoji_rows.iter().map(|row| {
+                                            h_flex()
+                                                .gap_1()
+                                                .children(
+                                                    row.iter().map(|emoji| {
+                                                        let emoji_str = emoji.to_string();
+                                                        let msg_id = message_id.clone();
+                                                        let app = app_entity.clone();
+                                                        let emoji_for_closure = emoji_str.clone();
+                                                        
+                                                        div()
+                                                            .p_2()
+                                                            .rounded(cx.theme().radius)
+                                                            .hover(|s| s.bg(cx.theme().accent).cursor_pointer())
+                                                            .on_mouse_down(
+                                                                gpui::MouseButton::Left,
+                                                                cx.listener(move |_state, _, _, cx| {
+                                                                    let app = app.clone();
+                                                                    let msg_id = msg_id.clone();
+                                                                    let emoji_str = emoji_for_closure.clone();
+                                                                    
+                                                                    cx.defer(move |cx| {
+                                                                        _ = app.update(cx, |app, cx| {
+                                                                            app.toggle_reaction(msg_id, emoji_str, cx);
+                                                                        });
+                                                                    });
+                                                                    
+                                                                    cx.emit(gpui::DismissEvent);
+                                                                }),
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .text_lg()
+                                                                    .child(emoji_str)
+                                                            )
+                                                    })
+                                                )
+                                        })
+                                    )
+                            )
                     )
             )
             .into_any_element()

@@ -56,14 +56,20 @@ impl TripwireApp {
             })
             // Main content: header + messages + input
             .child(self.render_chat_area(window, cx))
-            // Thread sidebar (if a thread is open)
+            // Thread sidebar (if a thread is open OR voice chat sidebar is open)
             .when_some(self.render_thread_sidebar(window, cx), |this, sidebar| {
                 this.child(sidebar)
             })
-            // Right panel: members list (only show for servers, not DMs, and not when thread is open)
-            .when(self.show_members && self.current_view == AppView::Servers && self.open_thread_id.is_none(), |this| {
-                this.child(self.render_members_panel(cx))
-            })
+            // Right panel: members list (only show for servers, not DMs, and not when any sidebar is open)
+            .when(
+                self.show_members 
+                && self.current_view == AppView::Servers 
+                && self.open_thread_id.is_none() 
+                && !self.show_voice_chat_sidebar, 
+                |this| {
+                    this.child(self.render_members_panel(cx))
+                }
+            )
             // Voice controls bar (in sidebar, above user bar)
             .when_some(self.render_voice_controls_bar(cx), |this, bar| {
                 this.child(bar)
