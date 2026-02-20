@@ -101,6 +101,7 @@ impl TripwireApp {
     }
 
     fn render_forum_thread(&self, thread: &ForumThread, cx: &Context<Self>) -> AnyElement {
+        let thread_id = thread.id.clone();
         div()
             .id(ElementId::Name(SharedString::from(thread.id.clone())))
             .w_full()
@@ -110,6 +111,9 @@ impl TripwireApp {
             .border_color(cx.theme().border)
             .cursor_pointer()
             .hover(|s| s.bg(cx.theme().muted))
+            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                this.open_forum_thread(thread_id.clone(), cx);
+            }))
             .child(
                 h_flex()
                     .w_full()
@@ -177,5 +181,10 @@ impl TripwireApp {
                     )
             )
             .into_any_element()
+    }
+    
+    pub(crate) fn open_forum_thread(&mut self, thread_id: String, cx: &mut Context<Self>) {
+        // Reuse the thread sidebar system for forum threads
+        self.open_thread(thread_id, cx);
     }
 }

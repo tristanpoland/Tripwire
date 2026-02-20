@@ -8,6 +8,7 @@ use gpui_component::{
     h_flex, v_flex, ActiveTheme as _, IconName, Sizable as _,
     avatar::Avatar,
     button::{Button, ButtonVariants},
+    input::Input,
     scroll::ScrollableElement as _,
     StyledExt,
 };
@@ -140,7 +141,7 @@ impl TripwireApp {
         &self,
         channel_name: &str,
         members_connected: usize,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         // Mock participants data
@@ -171,57 +172,202 @@ impl TripwireApp {
             },
         ];
 
-        v_flex()
+        h_flex()
             .flex_1()
             .h_full()
-            .gap_4()
-            .p_6()
+            .overflow_hidden()
+            // Left side: Voice participants grid
             .child(
-                // Voice channel title and info
                 v_flex()
-                    .gap_2()
+                    .flex_1()
+                    .h_full()
+                    .gap_4()
+                    .p_6()
                     .child(
-                        h_flex()
-                            .items_center()
+                        // Voice channel title and info
+                        v_flex()
                             .gap_2()
                             .child(
-                                div()
-                                    .text_2xl()
-                                    .child("🔊")
+                                h_flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_2xl()
+                                            .child("🔊")
+                                    )
+                                    .child(
+                                        div()
+                                            .text_2xl()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(cx.theme().foreground)
+                                            .child(channel_name.to_string())
+                                    )
                             )
                             .child(
                                 div()
-                                    .text_2xl()
-                                    .font_weight(gpui::FontWeight::BOLD)
-                                    .text_color(cx.theme().foreground)
-                                    .child(channel_name.to_string())
+                                    .text_sm()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(format!("{} members connected", members_connected.max(participants.len())))
                             )
                     )
+                    .child(
+                        // Participants grid
+                        div()
+                            .flex_1()
+                            .overflow_y_scrollbar()
+                            .child(
+                                div()
+                                    .grid()
+                                    .grid_cols(3)
+                                    .gap_4()
+                                    .children(participants.into_iter().map(|p| {
+                                        self.render_voice_participant(p, cx)
+                                    }))
+                            )
+                    )
+                    .child(
+                        // Voice controls bar
+                        self.render_voice_controls(cx)
+                    )
+            )
+            // Right side: Voice channel chat
+            .child(
+                self.render_voice_chat_panel(channel_name, window, cx)
+            )
+            .into_any_element()
+    }
+    
+    fn render_voice_chat_panel(
+        &self,
+        _channel_name: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        // Get messages for this voice channel
+        let messages = self.active_channel_id.as_ref()
+            .and_then(|id| self.messages.get(id))
+            .map(|msgs| msgs.clone())
+            .unwrap_or_default();
+        
+        v_flex()
+            .w(px(360.0))
+            .h_full()
+            .bg(cx.theme().sidebar)
+            .border_l_1()
+            .border_color(cx.theme().border)
+            .child(
+                // Header
+                h_flex()
+                    .flex_shrink_0()
+                    .h(px(48.0))
+                    .px_4()
+                    .items_center()
+                    .border_b_1()
+                    .border_color(cx.theme().border)
                     .child(
                         div()
                             .text_sm()
-                            .text_color(cx.theme().muted_foreground)
-                            .child(format!("{} members connected", members_connected.max(participants.len())))
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(cx.theme().foreground)
+                            .child("Voice Chat")
                     )
             )
             .child(
-                // Participants grid
+                // Messages
                 div()
                     .flex_1()
                     .overflow_y_scrollbar()
                     .child(
-                        div()
-                            .grid()
-                            .grid_cols(3)
-                            .gap_4()
-                            .children(participants.into_iter().map(|p| {
-                                self.render_voice_participant(p, cx)
+                        v_flex()
+                            .gap_1()
+                            .p_3()
+                            .children(messages.iter().enumerate().map(|(idx, msg)| {
+                                self.render_voice_chat_message(msg, idx, cx)
                             }))
                     )
             )
             .child(
-                // Voice controls bar
-                self.render_voice_controls(cx)
+                // Chat input
+                self.render_voice_chat_composer(window, cx)
+            )
+            .into_any_element()
+    }
+    
+    fn render_voice_chat_message(
+        &self,
+        message: &crate::models::Message,
+        _index: usize,
+        cx: &Context<Self>,
+    ) -> AnyElement {
+        h_flex()
+            .gap_2()
+            .py_2()
+            .px_2()
+            .rounded(cx.theme().radius)
+            .hover(|s| s.bg(cx.theme().accent))
+            .child(
+                div()
+                    .flex_shrink_0()
+                    .child(
+                        Avatar::new()
+                            .name(message.author.username.clone())
+                            .with_size(gpui_component::Size::Small)
+                    )
+            )
+            .child(
+                v_flex()
+                    .flex_1()
+                    .gap_1()
+                    .child(
+                        h_flex()
+                            .gap_2()
+                            .items_baseline()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(cx.theme().foreground)
+                                    .child(message.author.username.clone())
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(message.timestamp.clone())
+                            )
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(cx.theme().foreground)
+                            .child(message.content.clone())
+                    )
+            )
+            .into_any_element()
+    }
+    
+    fn render_voice_chat_composer(
+        &self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        v_flex()
+            .flex_shrink_0()
+            .p_3()
+            .border_t_1()
+            .border_color(cx.theme().border)
+            .child(
+                div()
+                    .px_2()
+                    .py_2()
+                    .rounded(cx.theme().radius)
+                    .bg(cx.theme().muted)
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .child(
+                        gpui_component::input::Input::new(&self.message_input).appearance(false)
+                    )
             )
             .into_any_element()
     }

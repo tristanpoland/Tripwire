@@ -273,7 +273,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 mentioned_users: vec![],
                 pinned: false,
                 thread_id: None,
-                thread_count: 0,
+                thread_count: 3,
                 created_at: time_ago(2, 30),
             },
             Message {
