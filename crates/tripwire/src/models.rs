@@ -1,6 +1,36 @@
 use gpui_component::IconName;
 use serde::{Deserialize, Serialize};
 
+// ── Voice State ────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum VoiceConnectionStatus {
+    Disconnected,
+    Connecting,
+    Connected,
+}
+
+#[derive(Debug, Clone)]
+pub struct VoiceState {
+    pub channel_id: String,
+    pub channel_name: String,
+    pub server_id: Option<String>,
+    pub server_name: Option<String>,
+    pub status: VoiceConnectionStatus,
+    pub is_muted: bool,
+    pub is_deafened: bool,
+    pub is_video_enabled: bool,
+    pub is_screen_sharing: bool,
+}
+
+impl VoiceState {
+    pub fn is_connected(&self) -> bool {
+        self.status == VoiceConnectionStatus::Connected
+    }
+}
+
+// ── User Status ────────────────────────────────────────────────────────────
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum UserStatus {
     Online,
@@ -187,6 +217,17 @@ impl ChannelKind {
 }
 
 #[derive(Debug, Clone)]
+pub struct VoiceParticipant {
+    pub user_id: String,
+    pub username: String,
+    pub avatar: Option<String>,
+    pub is_speaking: bool,
+    pub is_muted: bool,
+    pub is_deafened: bool,
+    pub is_video: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct Channel {
     pub id: String,
     pub name: String,
@@ -194,6 +235,7 @@ pub struct Channel {
     pub unread: usize,
     pub topic: Option<String>,
     pub members_connected: usize,
+    pub voice_participants: Vec<VoiceParticipant>,
 }
 
 impl Channel {
@@ -266,6 +308,7 @@ pub struct Message {
     pub pinned: bool,
     pub thread_id: Option<String>,
     pub thread_count: usize,
+    pub created_at: std::time::SystemTime, // For grouping logic
 }
 
 #[derive(Debug, Clone)]
@@ -331,6 +374,26 @@ impl Message {
             self.content.clone()
         } else {
             format!("{}...", &self.content[..max_len])
+        }
+    }
+
+    /// Check if this message should be grouped with the previous one
+    /// (same author within 5 minutes)
+    pub fn should_group_with(&self, other: &Message) -> bool {
+        if self.author.id != other.author.id {
+            return false;
+        }
+        
+        // If either is a reply, don't group
+        if self.is_reply() || other.is_reply() {
+            return false;
+        }
+        
+        // Check time difference (5 minutes = 300 seconds)
+        if let Ok(duration) = self.created_at.duration_since(other.created_at) {
+            duration.as_secs() < 300
+        } else {
+            false
         }
     }
 }

@@ -29,6 +29,90 @@ impl TripwireApp {
         &self,
         channel_name: &str,
         members_connected: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let is_in_this_channel = self.active_channel()
+            .map(|ch| self.is_in_voice_channel(&ch.id))
+            .unwrap_or(false);
+        
+        // If not connected to this voice channel, show join view
+        if !is_in_this_channel {
+            return self.render_voice_join_view(channel_name, members_connected, window, cx);
+        }
+        
+        // Otherwise, show the full voice UI with participants
+        self.render_voice_active_view(channel_name, members_connected, window, cx)
+    }
+    
+    fn render_voice_join_view(
+        &self,
+        channel_name: &str,
+        members_connected: usize,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        v_flex()
+            .flex_1()
+            .h_full()
+            .gap_4()
+            .items_center()
+            .justify_center()
+            .child(
+                v_flex()
+                    .gap_4()
+                    .items_center()
+                    .child(
+                        div()
+                            .size(px(80.0))
+                            .rounded_full()
+                            .bg(cx.theme().accent)
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(
+                                div()
+                                    .child("🔊")
+                            )
+                    )
+                    .child(
+                        div()
+                            .text_2xl()
+                            .font_weight(gpui::FontWeight::BOLD)
+                            .text_color(cx.theme().foreground)
+                            .child(channel_name.to_string())
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(if members_connected > 0 {
+                                format!("{} {} in channel", members_connected, if members_connected == 1 { "member" } else { "members" })
+                            } else {
+                                "No one is in the channel".to_string()
+                            })
+                    )
+                    .child(
+                        Button::new("join-voice-btn")
+                            .label("Join Voice Channel")
+                            .icon(IconName::Plus)
+                            .primary()
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                if let Some(channel) = this.active_channel().cloned() {
+                                    if let Some(server) = this.active_server().cloned() {
+                                        this.join_voice_channel(&channel, Some(&server), window, cx);
+                                    }
+                                }
+                            }))
+                    )
+            )
+            .into_any_element()
+    }
+    
+    fn render_voice_active_view(
+        &self,
+        channel_name: &str,
+        members_connected: usize,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {

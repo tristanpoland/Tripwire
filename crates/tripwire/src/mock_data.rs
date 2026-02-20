@@ -1,7 +1,13 @@
-use crate::models::{
+use crate::models::{VoiceParticipant, 
     Badge, Channel, ChannelCategory, ChannelKind, DirectMessageChannel, Message, MessageReply,
     Role, Server, User, UserProfile, UserStatus,
 };
+use std::time::{SystemTime, Duration};
+
+// Helper to create timestamps relative to now
+fn time_ago(hours: u64, minutes: u64) -> SystemTime {
+    SystemTime::now() - Duration::from_secs(hours * 3600 + minutes * 60)
+}
 
 pub fn make_user(id: &str, name: &str, disc: &str, status: UserStatus) -> User {
     User {
@@ -28,6 +34,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 1,
                             topic: Some("Official announcements only.".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "102".to_string(),
@@ -36,6 +43,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: Some("Read before participating.".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                     ],
                     collapsed: false,
@@ -50,6 +58,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 5,
                             topic: Some("Chat about anything!".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "104".to_string(),
@@ -58,6 +67,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: Some("Introduce yourself to the community.".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "105".to_string(),
@@ -66,6 +76,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 12,
                             topic: None,
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "108".to_string(),
@@ -74,6 +85,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 2,
                             topic: Some("Share your photos and videos".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                     ],
                     collapsed: false,
@@ -88,6 +100,35 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: None,
                             members_connected: 3,
+                            voice_participants: vec![
+                                VoiceParticipant {
+                                    user_id: "u1".to_string(),
+                                    username: "Alice".to_string(),
+                                    avatar: None,
+                                    is_speaking: true,
+                                    is_muted: false,
+                                    is_deafened: false,
+                                    is_video: false,
+                                },
+                                VoiceParticipant {
+                                    user_id: "u2".to_string(),
+                                    username: "Bob".to_string(),
+                                    avatar: None,
+                                    is_speaking: false,
+                                    is_muted: false,
+                                    is_deafened: true,
+                                    is_video: false,
+                                },
+                                VoiceParticipant {
+                                    user_id: "u3".to_string(),
+                                    username: "Carol".to_string(),
+                                    avatar: None,
+                                    is_speaking: true,
+                                    is_muted: true,
+                                    is_deafened: false,
+                                    is_video: false,
+                                },
+                            ],
                         },
                         Channel {
                             id: "107".to_string(),
@@ -96,6 +137,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: None,
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "109".to_string(),
@@ -104,6 +146,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: Some("Monthly community meetings".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                     ],
                     collapsed: false,
@@ -132,6 +175,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 3,
                             topic: Some("Development discussion".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "202".to_string(),
@@ -140,6 +184,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: Some("Rustaceans unite!".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "203".to_string(),
@@ -148,6 +193,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 2,
                             topic: None,
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "204".to_string(),
@@ -156,6 +202,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 8,
                             topic: Some("Ask questions and get help".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                     ],
                     collapsed: false,
@@ -182,6 +229,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 0,
                             topic: Some("Share design inspiration".to_string()),
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                         Channel {
                             id: "302".to_string(),
@@ -190,6 +238,7 @@ pub fn make_servers() -> Vec<Server> {
                             unread: 7,
                             topic: None,
                             members_connected: 0,
+                            voice_participants: vec![],
                         },
                     ],
                     collapsed: false,
@@ -225,6 +274,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+                created_at: time_ago(2, 30),
             },
             Message {
                 id: "m2".to_string(),
@@ -240,6 +290,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+                created_at: time_ago(2, 28),
             },
             Message {
                 id: "m3".to_string(),
@@ -259,6 +310,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 30),
             },
             Message {
                 id: "m4".to_string(),
@@ -274,6 +326,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 28),
             },
             Message {
                 id: "m5".to_string(),
@@ -289,6 +342,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 25),
             },
             Message {
                 id: "m6".to_string(),
@@ -304,6 +358,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 23),
             },
             Message {
                 id: "m7".to_string(),
@@ -319,6 +374,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 21),
             },
         ],
         "101" => vec![
@@ -336,6 +392,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 19),
             },
             Message {
                 id: "a2".to_string(),
@@ -351,6 +408,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(2, 18),
             },
         ],
         "201" => vec![
@@ -368,6 +426,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(0, 0),
             },
             Message {
                 id: "d2".to_string(),
@@ -383,6 +442,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(0, 0),
             },
         ],
         _ => vec![
@@ -400,6 +460,7 @@ pub fn make_messages_for(channel_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(0, 0),
             },
         ],
     }
@@ -459,6 +520,7 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(0, 0),
             },
                 Message {
                     id: "dm2".to_string(),
@@ -474,6 +536,7 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(0, 0),
             },
             ]
         }
@@ -494,6 +557,7 @@ pub fn make_dm_messages_for(dm_id: &str) -> Vec<Message> {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+            created_at: time_ago(0, 0),
             },
             ]
         }

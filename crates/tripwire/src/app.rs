@@ -5,7 +5,7 @@ use gpui_component::input::{InputEvent, InputState};
 use gpui::AppContext;
 use crate::auth_state::AuthState;
 use crate::mock_data;
-use crate::models::{Attachment, Channel, ChannelKind, DirectMessageChannel, Message, MessageReply, Server, User, UserProfile};
+use crate::models::{Attachment, Channel, ChannelKind, DirectMessageChannel, Message, MessageReply, Server, User, UserProfile, VoiceState};
 use crate::titlebar::TripwireTitleBar;
 use crate::app::app_view::settings::SettingsScreen;
 
@@ -50,6 +50,16 @@ pub struct TripwireApp {
     
     // ── Reply state ─────────────────────────────────────────────────────────
     pub(crate) replying_to: Option<MessageReply>,
+    
+    // ── Edit state ──────────────────────────────────────────────────────────
+    pub(crate) editing_message_id: Option<String>,
+    
+    // ── Typing indicators ────────────────────────────────────────────────────
+    pub(crate) typing_users: HashMap<String, Vec<String>>, // channel_id -> [user_ids]
+    
+    // ── Voice state ─────────────────────────────────────────────────────────
+    pub(crate) voice_state: Option<VoiceState>,
+    pub(crate) show_voice_switch_warning: Option<(Channel, Option<Server>)>, // (new_channel, new_server)
     
     // ── Profile state ───────────────────────────────────────────────────────
     pub(crate) show_profile: Option<UserProfile>,
@@ -127,6 +137,10 @@ impl TripwireApp {
             emoji_search: String::new(),
             active_emoji_picker_message: None,
             replying_to: None,
+            editing_message_id: None,
+            typing_users: HashMap::new(),
+            voice_state: None,
+            show_voice_switch_warning: None,
             show_profile: None,
             user_profiles: HashMap::new(),
             show_settings: false,
@@ -274,6 +288,7 @@ impl TripwireApp {
                 pinned: false,
                 thread_id: None,
                 thread_count: 0,
+                created_at: std::time::SystemTime::now(),
             };
             
             match self.current_view {
@@ -471,11 +486,251 @@ impl TripwireApp {
         self.server_settings_screen = screen;
         cx.notify();
     }
+    
+    // ── Message editing helpers ─────────────────────────────────────────────
+    
+    pub(crate) fn start_edit_message(&mut self, message_id: String, window: &mut Window, cx: &mut Context<Self>) {
+        // Find the message and populate input with its content
+        let messages = match self.current_view {
+            AppView::Servers => {
+                if let Some(channel_id) = &self.active_channel_id {
+                    self.messages.get(channel_id)
+                } else {
+                    None
+                }
+            }
+            AppView::DirectMessages => {
+                if let Some(dm_id) = &self.active_dm_id {
+                    self.dm_messages.get(dm_id)
+                } else {
+                    None
+                }
+            }
+        };
+        
+        if let Some(messages) = messages {
+            if let Some(msg) = messages.iter().find(|m| m.id == message_id) {
+                self.editing_message_id = Some(message_id);
+                self.message_input.update(cx, |state, cx| {
+                    state.set_value(&msg.content, window, cx);
+                });
+                cx.notify();
+            }
+        }
+    }
+    
+    pub(crate) fn cancel_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.editing_message_id = None;
+        self.message_input.update(cx, |state, cx| {
+            state.set_value("", window, cx);
+        });
+        cx.notify();
+    }
+    
+    pub(crate) fn save_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(message_id) = self.editing_message_id.clone() {
+            let new_content = self.message_input.read(cx).value().trim().to_string();
+            if new_content.is_empty() {
+                return;
+            }
+            
+            let messages = match self.current_view {
+                AppView::Servers => {
+                    if let Some(channel_id) = &self.active_channel_id {
+                        self.messages.get_mut(channel_id)
+                    } else {
+                        None
+                    }
+                }
+                AppView::DirectMessages => {
+                    if let Some(dm_id) = &self.active_dm_id {
+                        self.dm_messages.get_mut(dm_id)
+                    } else {
+                        None
+                    }
+                }
+            };
+            
+            if let Some(messages) = messages {
+                if let Some(msg) = messages.iter_mut().find(|m| m.id == message_id) {
+                    msg.content = new_content;
+                    msg.edited = true;
+                    msg.edited_timestamp = Some("Just now".to_string());
+                }
+            }
+            
+            self.cancel_edit(window, cx);
+        }
+    }
+    
+    pub(crate) fn delete_message(&mut self, message_id: String, cx: &mut Context<Self>) {
+        let messages = match self.current_view {
+            AppView::Servers => {
+                if let Some(channel_id) = &self.active_channel_id {
+                    self.messages.get_mut(channel_id)
+                } else {
+                    None
+                }
+            }
+            AppView::DirectMessages => {
+                if let Some(dm_id) = &self.active_dm_id {
+                    self.dm_messages.get_mut(dm_id)
+                } else {
+                    None
+                }
+            }
+        };
+        
+        if let Some(messages) = messages {
+            messages.retain(|m| m.id != message_id);
+        }
+        
+        cx.notify();
+    }
+    
+    // ── Typing indicator helpers ────────────────────────────────────────────
+    
+    pub(crate) fn get_typing_users(&self) -> Vec<String> {
+        let channel_or_dm_id = match self.current_view {
+            AppView::Servers => self.active_channel_id.as_ref(),
+            AppView::DirectMessages => self.active_dm_id.as_ref(),
+        };
+        
+        channel_or_dm_id
+            .and_then(|id| self.typing_users.get(id))
+            .map(|users| {
+                users
+                    .iter()
+                    .filter_map(|user_id| {
+                        // Look up username from servers or DMs
+                        if let Some(server) = self.active_server() {
+                            server.members.iter()
+                                .find(|m| &m.id == user_id)
+                                .map(|m| m.username.clone())
+                        } else if let Some(dm_id) = &self.active_dm_id {
+                            self.dm_channels.iter()
+                                .find(|dm| &dm.id == dm_id)
+                                .map(|dm| dm.recipient.username.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
 
     pub(crate) fn logout(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.auth.logout();
         // Clear message input value happens implicitly since we reset auth
         cx.notify();
+    }
+    
+    // ── Voice management helpers ────────────────────────────────────────────
+    
+    pub(crate) fn join_voice_channel(
+        &mut self,
+        channel: &Channel,
+        server: Option<&Server>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // If already in a voice channel, show warning
+        if let Some(ref current_voice) = self.voice_state {
+            if current_voice.channel_id != channel.id {
+                self.show_voice_switch_warning = Some((channel.clone(), server.cloned()));
+                cx.notify();
+                return;
+            }
+        }
+        
+        self.voice_state = Some(VoiceState {
+            channel_id: channel.id.clone(),
+            channel_name: channel.name.clone(),
+            server_id: server.map(|s| s.id.clone()),
+            server_name: server.map(|s| s.name.clone()),
+            status: crate::models::VoiceConnectionStatus::Connecting,
+            is_muted: false,
+            is_deafened: false,
+            is_video_enabled: false,
+            is_screen_sharing: false,
+        });
+        
+        // Simulate connection (in real app, this would be async)
+        let entity = cx.entity();
+        window.defer(cx, move |window, cx| {
+            _ = entity.update(cx, |this, cx| {
+                if let Some(ref mut voice) = this.voice_state {
+                    voice.status = crate::models::VoiceConnectionStatus::Connected;
+                    cx.notify();
+                }
+            });
+        });
+        
+        cx.notify();
+    }
+    
+    pub(crate) fn confirm_voice_switch(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some((channel, server)) = self.show_voice_switch_warning.take() {
+            // Leave current voice channel
+            self.voice_state = None;
+            // Join new voice channel
+            self.join_voice_channel(&channel, server.as_ref(), window, cx);
+        }
+        cx.notify();
+    }
+    
+    pub(crate) fn cancel_voice_switch(&mut self, cx: &mut Context<Self>) {
+        self.show_voice_switch_warning = None;
+        cx.notify();
+    }
+    
+    pub(crate) fn leave_voice_channel(&mut self, cx: &mut Context<Self>) {
+        self.voice_state = None;
+        cx.notify();
+    }
+    
+    pub(crate) fn toggle_mute(&mut self, cx: &mut Context<Self>) {
+        if let Some(ref mut voice) = self.voice_state {
+            voice.is_muted = !voice.is_muted;
+            // If deafened, unmute  doesn't work
+            if voice.is_deafened {
+                return;
+            }
+            cx.notify();
+        }
+    }
+    
+    pub(crate) fn toggle_deafen(&mut self, cx: &mut Context<Self>) {
+        if let Some(ref mut voice) = self.voice_state {
+            voice.is_deafened = !voice.is_deafened;
+            // Deafening also mutes
+            if voice.is_deafened {
+                voice.is_muted = true;
+            }
+            cx.notify();
+        }
+    }
+    
+    pub(crate) fn toggle_video(&mut self, cx: &mut Context<Self>) {
+        if let Some(ref mut voice) = self.voice_state {
+            voice.is_video_enabled = !voice.is_video_enabled;
+            cx.notify();
+        }
+    }
+    
+    pub(crate) fn toggle_screen_share(&mut self, cx: &mut Context<Self>) {
+        if let Some(ref mut voice) = self.voice_state {
+            voice.is_screen_sharing = !voice.is_screen_sharing;
+            cx.notify();
+        }
+    }
+    
+    pub(crate) fn is_in_voice_channel(&self, channel_id: &str) -> bool {
+        self.voice_state
+            .as_ref()
+            .map(|v| v.channel_id == channel_id && v.is_connected())
+            .unwrap_or(false)
     }
 }
 
