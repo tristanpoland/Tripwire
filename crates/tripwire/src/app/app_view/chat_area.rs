@@ -1001,7 +1001,7 @@ impl TripwireApp {
 
         let search_query = app_entity.read(cx).emoji_search_input.read(cx).value().to_lowercase();
         
-        // Filter emojis based on search
+        // Filter emojis based on search (flat list, not rows)
         let filtered_emojis: Vec<&str> = if search_query.is_empty() {
             emoji_list.iter().map(|(emoji, _)| *emoji).collect()
         } else {
@@ -1011,12 +1011,6 @@ impl TripwireApp {
                 .map(|(emoji, _)| *emoji)
                 .collect()
         };
-
-        // Group into rows of 8
-        let emoji_rows: Vec<Vec<&str>> = filtered_emojis
-            .chunks(8)
-            .map(|chunk| chunk.to_vec())
-            .collect();
 
         v_flex()
             .w(gpui::px(320.0))
@@ -1045,9 +1039,8 @@ impl TripwireApp {
                             .overflow_y_scrollbar()
                             .p_2()
                             .child(
-                                v_flex()
-                                    .gap_1()
-                                    .when(emoji_rows.is_empty(), |this| {
+                                div()
+                                    .when(filtered_emojis.is_empty(), |this| {
                                         this.child(
                                             div()
                                                 .p_4()
@@ -1057,46 +1050,49 @@ impl TripwireApp {
                                                 .child("No emojis found")
                                         )
                                     })
-                                    .children(
-                                        emoji_rows.iter().map(|row| {
-                                            h_flex()
-                                                .gap_1()
-                                                .children(
-                                                    row.iter().map(|emoji| {
-                                                        let emoji_str = emoji.to_string();
-                                                        let msg_id = message_id.clone();
-                                                        let app = app_entity.clone();
-                                                        let emoji_for_closure = emoji_str.clone();
-                                                        
-                                                        div()
-                                                            .p_2()
-                                                            .rounded(cx.theme().radius)
-                                                            .hover(|s| s.bg(cx.theme().accent).cursor_pointer())
-                                                            .on_mouse_down(
-                                                                gpui::MouseButton::Left,
-                                                                cx.listener(move |_state, _, _, cx| {
-                                                                    let app = app.clone();
-                                                                    let msg_id = msg_id.clone();
-                                                                    let emoji_str = emoji_for_closure.clone();
-                                                                    
-                                                                    cx.defer(move |cx| {
-                                                                        _ = app.update(cx, |app, cx| {
-                                                                            app.toggle_reaction(msg_id, emoji_str, cx);
-                                                                        });
+                                    .when(!filtered_emojis.is_empty(), |this| {
+                                        this.grid()
+                                            .grid_cols(8)
+                                            .gap_1()
+                                            .children(
+                                                filtered_emojis.iter().map(|emoji| {
+                                                    let emoji_str = emoji.to_string();
+                                                    let msg_id = message_id.clone();
+                                                    let app = app_entity.clone();
+                                                    let emoji_for_closure = emoji_str.clone();
+                                                    
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .justify_center()
+                                                        .w(gpui::px(32.0))
+                                                        .h(gpui::px(32.0))
+                                                        .rounded(cx.theme().radius)
+                                                        .hover(|s| s.bg(cx.theme().accent).cursor_pointer())
+                                                        .on_mouse_down(
+                                                            gpui::MouseButton::Left,
+                                                            cx.listener(move |_state, _, _, cx| {
+                                                                let app = app.clone();
+                                                                let msg_id = msg_id.clone();
+                                                                let emoji_str = emoji_for_closure.clone();
+                                                                
+                                                                cx.defer(move |cx| {
+                                                                    _ = app.update(cx, |app, cx| {
+                                                                        app.toggle_reaction(msg_id, emoji_str, cx);
                                                                     });
-                                                                    
-                                                                    cx.emit(gpui::DismissEvent);
-                                                                }),
-                                                            )
-                                                            .child(
-                                                                div()
-                                                                    .text_lg()
-                                                                    .child(emoji_str)
-                                                            )
-                                                    })
-                                                )
-                                        })
-                                    )
+                                                                });
+                                                                
+                                                                cx.emit(gpui::DismissEvent);
+                                                            }),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .text_lg()
+                                                                .child(emoji_str)
+                                                        )
+                                                })
+                                            )
+                                    })
                             )
                     )
             )
