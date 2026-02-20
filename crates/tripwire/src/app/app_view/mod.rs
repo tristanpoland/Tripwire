@@ -17,6 +17,7 @@ pub mod voice_controls_bar;
 pub mod gallery_channel;
 pub mod forum_channel;
 pub mod announcement_channel;
+pub mod thread_sidebar;
 
 use gpui::{AnyElement, Context, IntoElement as _, Window, div, InteractiveElement};
 use gpui::prelude::FluentBuilder;
@@ -55,8 +56,12 @@ impl TripwireApp {
             })
             // Main content: header + messages + input
             .child(self.render_chat_area(window, cx))
-            // Right panel: members list (only show for servers, not DMs)
-            .when(self.show_members && self.current_view == AppView::Servers, |this| {
+            // Thread sidebar (if a thread is open)
+            .when_some(self.render_thread_sidebar(window, cx), |this, sidebar| {
+                this.child(sidebar)
+            })
+            // Right panel: members list (only show for servers, not DMs, and not when thread is open)
+            .when(self.show_members && self.current_view == AppView::Servers && self.open_thread_id.is_none(), |this| {
                 this.child(self.render_members_panel(cx))
             })
             // Voice controls bar (in sidebar, above user bar)

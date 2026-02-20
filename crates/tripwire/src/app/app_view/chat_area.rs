@@ -544,6 +544,45 @@ impl TripwireApp {
                                         )
                                 )
                             })
+                            // Thread count badge (if message has replies)
+                            .when(msg.thread_count > 0, |this| {
+                                let msg_id = message_id.clone();
+                                this.child(
+                                    div()
+                                        .mt_1()
+                                        .child(
+                                            div()
+                                                .px_3()
+                                                .py_2()
+                                                .rounded(cx.theme().radius)
+                                                .bg(cx.theme().accent)
+                                                .hover(|s| s.bg(cx.theme().primary).cursor_pointer())
+                                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                    this.open_thread(msg_id.clone(), cx);
+                                                }))
+                                                .child(
+                                                    h_flex()
+                                                        .gap_2()
+                                                        .items_center()
+                                                        .child(
+                                                            div()
+                                                                .text_xs()
+                                                                .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                                .text_color(cx.theme().primary_foreground)
+                                                                .child(format!("{} {}", 
+                                                                    msg.thread_count,
+                                                                    if msg.thread_count == 1 { "reply" } else { "replies" }
+                                                                ))
+                                                        )
+                                                        .child(
+                                                            gpui_component::Icon::new(IconName::ArrowRight)
+                                                                .xsmall()
+                                                                .text_color(cx.theme().primary_foreground)
+                                                        )
+                                                )
+                                        )
+                                )
+                            })
                     )
                     )
             )
@@ -565,16 +604,16 @@ impl TripwireApp {
                             .border_1()
                             .border_color(cx.theme().border)
                             .shadow_md()
-                            // Reply button
+                            // Reply button - opens thread
                             .child({
-                                let message_clone = msg.clone();
+                                let message_id_clone = message_id.clone();
                                 Button::new(format!("reply-{}", message_id))
                                     .icon(IconName::ArrowLeft)
                                     .ghost()
                                     .xsmall()
-                                    .tooltip("Reply")
+                                    .tooltip("Reply in Thread")
                                     .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.start_reply(&message_clone, cx);
+                                        this.open_thread(message_id_clone.clone(), cx);
                                     }))
                             })
                             // Emoji picker

@@ -8194,6 +8194,7 @@ dependencies = [
  "rust-i18n",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

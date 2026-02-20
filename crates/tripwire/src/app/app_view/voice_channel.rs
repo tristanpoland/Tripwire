@@ -52,6 +52,11 @@ impl TripwireApp {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        // Get voice participants from the active channel
+        let participants = self.active_channel()
+            .map(|ch| ch.voice_participants.clone())
+            .unwrap_or_default();
+        
         v_flex()
             .flex_1()
             .h_full()
@@ -62,6 +67,7 @@ impl TripwireApp {
                 v_flex()
                     .gap_4()
                     .items_center()
+                    .max_w(px(600.0))
                     .child(
                         div()
                             .size(px(80.0))
@@ -92,6 +98,27 @@ impl TripwireApp {
                                 "No one is in the channel".to_string()
                             })
                     )
+                    // Show participants in a grid if any
+                    .when(!participants.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .w_full()
+                                .p_4()
+                                .rounded(cx.theme().radius)
+                                .bg(cx.theme().sidebar)
+                                .border_1()
+                                .border_color(cx.theme().border)
+                                .child(
+                                    div()
+                                        .grid()
+                                        .grid_cols(4)
+                                        .gap_3()
+                                        .children(participants.into_iter().map(|p| {
+                                            self.render_voice_participant_preview(p, cx)
+                                        }))
+                                )
+                        )
+                    })
                     .child(
                         Button::new("join-voice-btn")
                             .label("Join Voice Channel")
@@ -195,6 +222,84 @@ impl TripwireApp {
             .child(
                 // Voice controls bar
                 self.render_voice_controls(cx)
+            )
+            .into_any_element()
+    }
+
+    fn render_voice_participant_preview(
+        &self,
+        participant: crate::models::VoiceParticipant,
+        cx: &Context<Self>,
+    ) -> AnyElement {
+        let speaking_border = if participant.is_speaking {
+            Some(gpui::rgb(0x23a55a)) // Green for speaking
+        } else {
+            None
+        };
+
+        v_flex()
+            .w_full()
+            .gap_2()
+            .p_3()
+            .rounded(cx.theme().radius)
+            .bg(cx.theme().muted)
+            .border_2()
+            .when_some(speaking_border, |this, color| {
+                this.border_color(color)
+            })
+            .when(speaking_border.is_none(), |this| {
+                this.border_color(cx.theme().border)
+            })
+            .items_center()
+            .child(
+                // Avatar with status overlay
+                div()
+                    .relative()
+                    .child(
+                        Avatar::new()
+                            .name(participant.username.clone())
+                            .with_size(gpui_component::Size::Medium)
+                    )
+                    .when(participant.is_speaking, |this| {
+                        this.child(
+                            div()
+                                .absolute()
+                                .bottom(px(-4.0))
+                                .right(px(-4.0))
+                                .size(px(12.0))
+                                .rounded_full()
+                                .bg(gpui::rgb(0x23a55a))
+                        )
+                    })
+                    .when(participant.is_muted || participant.is_deafened, |this| {
+                        this.child(
+                            div()
+                                .absolute()
+                                .top(px(-4.0))
+                                .right(px(-4.0))
+                                .size(px(16.0))
+                                .rounded_full()
+                                .bg(if participant.is_deafened { 
+                                    gpui::rgb(0x5865f2) 
+                                } else { 
+                                    gpui::rgb(0xed4245) 
+                                })
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(div().text_xs().child("🔇"))
+                        )
+                    })
+            )
+            .child(
+                // Username
+                div()
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .text_color(cx.theme().foreground)
+                    .text_center()
+                    .line_clamp(1)
+                    .child(participant.username)
             )
             .into_any_element()
     }

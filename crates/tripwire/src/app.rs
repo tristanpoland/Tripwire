@@ -51,6 +51,10 @@ pub struct TripwireApp {
     // ── Reply state ─────────────────────────────────────────────────────────
     pub(crate) replying_to: Option<MessageReply>,
     
+    // ── Thread state ────────────────────────────────────────────────────────
+    pub(crate) open_thread_id: Option<String>, // The message ID that is the thread parent
+    pub(crate) thread_messages: HashMap<String, Vec<Message>>, // thread_id -> messages
+    
     // ── Edit state ──────────────────────────────────────────────────────────
     pub(crate) editing_message_id: Option<String>,
     
@@ -137,6 +141,8 @@ impl TripwireApp {
             emoji_search: String::new(),
             active_emoji_picker_message: None,
             replying_to: None,
+            open_thread_id: None,
+            thread_messages: HashMap::new(),
             editing_message_id: None,
             typing_users: HashMap::new(),
             voice_state: None,

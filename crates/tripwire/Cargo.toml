@@ -16,3 +16,4 @@ anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 rust-i18n = { workspace = true }
+uuid = { version = "1.11", features = ["v4"] }
